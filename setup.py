@@ -70,7 +70,7 @@ setup(
     test_suite='test',
     entry_points={
         'console_scripts': [
-            'tor-worker = tor_worker.cli.__main__:main',
+            # 'tor-worker = tor_worker.cli.__main__:main',
         ],
     },
     extras_require={

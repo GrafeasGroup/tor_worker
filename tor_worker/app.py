@@ -3,14 +3,22 @@ from tor_worker import __BROKER_URL__
 from celery import Celery
 
 
-app = Celery(broker=__BROKER_URL__)
-app.conf.task_default_queue = 'default'
+app = Celery('tasks', broker=__BROKER_URL__)
 app.conf.timezone = 'UTC'
 app.conf.enable_utc = True
+
 app.conf.beat_schedule = {
-    'check-inbox': {
-        'task': 'tor_worker.tasks.moderator.check_inbox',
-        'schedule': 90,
+    # 'check_inbox': {
+    #     'task': 'tor_worker.tasks.moderator.check_inbox',
+    #     'schedule': 90,
+    # },
+    # 'check-subreddit-feeds': {
+    #     'task': 'tor_worker.tasks.anyone.check_new_feed',
+    #     'schedule': 20,
+    # },
+    'test-system': {
+        'task': 'tor_worker.tasks.anyone.test_system',
+        'schedule': 15,
     },
 }
 
@@ -45,20 +53,24 @@ If something does not have any particular requirements (e.g., no rate-limiting
 or concurrency issues to work around), we put it in the 'default' queue. All
 tasks not explicitly declared below are put in that queue.
 """
+# app.conf.task_routes = ([
+#     ('tor_worker.tasks.moderator.check_inbox',
+#      {'queue': 'u_transcribersofreddit'}),
+#
+#     ('tor_worker.tasks.moderator.process_message',
+#      {'queue': 'u_transcribersofreddit'}),
+#
+#     ('tor_worker.tasks.moderator.send_bot_message',
+#      {'queue': 'u_transcribersofreddit'}),
+#
+#     ('tor_worker.tasks.moderator.*',
+#      {'queue': 'f_tor_mod'}),
+#
+#     ('tor_worker.tasks.anyone.*',
+#      {'queue': 'celery'}),
+# ])
 
-app.conf.task_routes = ([
-    ('tor_worker.tasks.moderator.check_inbox',
-     {'queue': 'u_transcribersofreddit'}),
 
-    ('tor_worker.tasks.moderator.process_message',
-     {'queue': 'u_transcribersofreddit'}),
-
-    # ('tor_worker.tasks.moderator.process_message',
-    #  {'queue': 'u_transcribersofreddit'}),
-
-    ('tor_worker.tasks.moderator.*',
-     {'queue': 'f_tor_mod'}),
-
-    ('tor_worker.tasks.anyone.*',
-     {'queue': 'default'}),
-])
+# All of the below imports are 'useless', per static analysis, but required for
+# celery to register all of the tasks in the system
+import tor_worker.tasks.all  # noqa

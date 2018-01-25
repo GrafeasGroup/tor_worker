@@ -11,6 +11,7 @@ from setuptools.command.test import test as TestCommand
 
 from tor_worker import __version__
 
+
 class PyTest(TestCommand):
     user_options = [('pytest-args=', 'a', "Arguments to pass to pytest")]
 
@@ -37,7 +38,6 @@ testing_deps = [
     'sh',
     'pytest',
     'pytest-cov',
-    'responses',
 ]
 dev_helper_deps = [
     'better-exceptions',
@@ -78,6 +78,8 @@ setup(
     },
     tests_require=testing_deps,
     install_requires=[
-        'requests'
+        'requests',
+        'redis<3.0.0',
+        'celery[redis]',
     ],
 )

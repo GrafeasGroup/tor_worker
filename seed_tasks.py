@@ -15,7 +15,6 @@ print('Pre-seed time:  %d' % time.time())
 
 for i in range(1, 500):
     test_system.delay()
-    # pass
     # send_bot_message.delay(f'test message {i}', to='spez',
     #                        subject=f'Test {i}')
 

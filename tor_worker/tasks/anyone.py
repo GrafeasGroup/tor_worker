@@ -14,14 +14,14 @@ from celery import current_app as app
 log = get_task_logger(__name__)
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, ignore_result=True, base=Task)
 def send_to_slack(self, message, channel):
     self.slack.api_call('chat.postMessage',
                         channel=channel,
                         text=message)
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, ignore_result=True, base=Task)
 def process_comment(self, comment_id):
     """
     Processes a notification of comment being made, routing to other tasks as
@@ -56,7 +56,7 @@ def process_comment(self, comment_id):
             pass
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, rate_limit='50/m', base=Task)
 def check_new_feed(self, subreddit):
     r = self.http.get(f'https://www.reddit.com/r/{subreddit}/new.json')
     r.raise_for_status()
@@ -80,19 +80,19 @@ def check_new_feed(self, subreddit):
 
     for feed_item in feed['data']['children']:
         if feed_item['data']['is_self']:
-            log.info('{} item is a self-post'.format(feed_item['data']['id']))
+            log.debug('{} item is a self-post'.format(feed_item['data']['id']))
             continue
         if feed_item['data']['locked']:
-            log.info('{} item is locked'.format(feed_item['data']['id']))
+            log.debug('{} item is locked'.format(feed_item['data']['id']))
             continue
         if feed_item['data']['score'] < 10:
-            log.info('{} item does not meet the necessary criteria'.format(
+            log.debug('{} item does not meet the necessary criteria'.format(
                 feed_item['data']['id']))
             # Temporary disable for testing
             # continue
             pass
         if feed_item['data']['domain'] not in AUTHORIZED_DOMAINS:
-            log.info('{} item is on an unsupported domain'.format(
+            log.debug('{} item is on an unsupported domain'.format(
                 feed_item['data']['id']))
             continue
 
@@ -104,7 +104,32 @@ def check_new_feed(self, subreddit):
             'media': feed_item['data']['url'],
         })
 
+    log.info('Found %d posts for /r/%s' % (len(cross_posts), subreddit))
     return cross_posts
+
+
+@app.task(bind=True, ignore_result=True, base=Task)
+def check_new_feeds(self):
+    subreddits = [
+        'DnDGreentext',
+        'gametales',
+        'blind',
+        'DescriptionPlease',
+        'rpghorrorstories',
+        'TheChurchOfRogers',
+        'kierra',
+        'BestOfReports',
+        'ScottishPeopleTwitter',
+        'TrashyText',
+        'ihavesex',
+        # ... more, but too lazy to hardcode for now
+
+        'ProgrammerHumor',
+        'me_irl',
+    ]
+
+    for sub in subreddits:
+        check_new_feed.delay(sub)
 
 
 @app.task(bind=True, ignore_result=True, base=Task)

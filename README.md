@@ -1,6 +1,8 @@
 # ToR Worker
 
-This is a workhorse for Transcribers Of Reddit to chug through tasks queued up for processing
+This is a workhorse for Transcribers Of Reddit to chug through tasks queued up for processing. This shall act as an experiment to rewrite the Transcribers of Reddit bots using Celery task runner framework as a basis.
+
+It is currently in pre-alpha and is only made publicly available for feedback from select individuals (you already know who you are).
 
 ## Install
 
@@ -12,19 +14,17 @@ $ pip install -e .
 
 ## Use
 
-### For a specific username
-
 Set these environment variables ahead of time:
 
-- `QUEUES` - A space-delimited list of queues to process
 - `praw_username` - The username of the Reddit account to login
 - `praw_password` - The password of the Reddit account to login
 - `praw_client_id` - The client key of the registered Reddit app
 - `praw_client_secret` - The client secret of the registered Reddit app
 
-Invoke the worker like so:
+Invoke the worker locally, like so:
 
 ```shell
-$ tor-worker work <QUEUE_NAME> [<QUEUE_NAME> [<QUEUE_NAME> [...]]]
-# => starts daemon mode chugging through the work in the queues
+$ celery worker --app=tor_worker.app -l info -Q 'celery' --autoscale '10,1' -n 'main@%h' -B -E
 ```
+
+Once built, where it says `'celery'` above, we will add in the username-specific queues that match up with the PRAW username. We will also start one worker per PRAW username.

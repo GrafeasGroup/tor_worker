@@ -6,6 +6,7 @@ from celery import Celery
 app = Celery('tasks', broker=__BROKER_URL__)
 app.conf.timezone = 'UTC'
 app.conf.enable_utc = True
+app.conf.task_default_queue = 'default'
 
 app.conf.beat_schedule = {
     # 'check_inbox': {

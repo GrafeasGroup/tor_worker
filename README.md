@@ -24,7 +24,7 @@ Set these environment variables ahead of time:
 Invoke the worker locally, like so:
 
 ```shell
-$ celery worker --app=tor_worker.app -l info -Q 'celery' --autoscale '10,1' -n 'main@%h' -B -E
+$ celery worker --app=tor_worker.app -l info -Q 'default' --autoscale '10,1' -n 'main@%h' -B -E
 ```
 
-Once built, where it says `'celery'` above, we will add in the username-specific queues that match up with the PRAW username. We will also start one worker per PRAW username.
+Once built, where it says `'default'` above, we will add in the username-specific queues that match up with the PRAW username. We will also start one worker per PRAW username.

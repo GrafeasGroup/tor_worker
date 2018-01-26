@@ -14,7 +14,7 @@ _missing = object()
 
 
 # @see https://stackoverflow.com/a/17487613/1236035
-class cached_property(object):
+class cached_property(object):  # pragma: no cover
     """A decorator that converts a function into a lazy property.  The
     function wrapped is called the first time to retrieve the result
     and then that calculated result is used the next time you access
@@ -60,7 +60,7 @@ class Task(celery.Task):
     Base class with lazy-loaded clients for external resources
     """
     @cached_property
-    def reddit(self):
+    def reddit(self):  # pragma: no cover
         return praw.Reddit(
             check_for_updates=False,
             user_agent=f'praw:org.grafeas.tor_worker:v{__version__} '
@@ -68,13 +68,13 @@ class Task(celery.Task):
         )
 
     @cached_property
-    def redis(self):
+    def redis(self):  # pragma: no cover
         conn = redis.StrictRedis()
 
         return conn
 
     @cached_property
-    def http(self):
+    def http(self):  # pragma: no cover
         http = requests.Session()
         http.headers.update({
             'User-Agent': f'python:org.grafeas.tor_worker:v{__version__} '
@@ -83,11 +83,10 @@ class Task(celery.Task):
         return http
 
     @cached_property
-    def slack(self):
+    def slack(self):  # pragma: no cover
         if os.getenv('SLACK_API_KEY'):
             return SlackClient(os.getenv('SLACK_API_KEY'))
 
-    praw_user_agent = ''
     autoretry_for = ()
     retry_backoff = True
     max_retries = 9

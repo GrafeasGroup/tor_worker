@@ -16,10 +16,10 @@ app.conf.beat_schedule = {
     #     'task': 'tor_worker.tasks.anyone.check_new_feed',
     #     'schedule': 20,
     # },
-    'test-system': {
-        'task': 'tor_worker.tasks.anyone.test_system',
-        'schedule': 15,
-    },
+    # 'test-system': {
+    #     'task': 'tor_worker.tasks.anyone.test_system',
+    #     'schedule': 15,
+    # },
 }
 
 """

@@ -5,33 +5,23 @@ from tor_worker.context import (
     is_claimable_post,
 )
 from tor_worker.moderation import process_mod_intervention
-from tor_worker.tasks.base import (
-    RedditTask,
-    AnonymousTask,
-)
-
-import time
+from tor_worker.tasks.base import Task
 
 from celery.utils.log import get_task_logger
 from celery import current_app as app
-from slackclient import SlackClient
 
 
 log = get_task_logger(__name__)
 
 
-@app.task(bind=True, base=AnonymousTask)
+@app.task(bind=True, base=Task)
 def send_to_slack(self, message, channel):
-    """
-    """
-    client = SlackClient(self.env.slack_api_key)
-
-    client.api_call('chat.postMessage',
-                    channel=channel,
-                    text=message)
+    self.slack.api_call('chat.postMessage',
+                        channel=channel,
+                        text=message)
 
 
-@app.task(bind=True, base=RedditTask)
+@app.task(bind=True, base=Task)
 def process_comment(self, comment_id):
     """
     Processes a notification of comment being made, routing to other tasks as
@@ -66,9 +56,9 @@ def process_comment(self, comment_id):
             pass
 
 
-@app.task(bind=True, base=AnonymousTask)
-def check_new_feed(self):
-    r = self.http.get('https://www.reddit.com/r/ProgrammerHumor/new.json')
+@app.task(bind=True, base=Task)
+def check_new_feed(self, subreddit):
+    r = self.http.get(f'https://www.reddit.com/r/{subreddit}/new.json')
     r.raise_for_status()
     feed = r.json()
 
@@ -106,6 +96,8 @@ def check_new_feed(self):
                 feed_item['data']['id']))
             continue
 
+        # TODO: check if post is already added
+
         cross_posts.append({
             'title': feed_item['data']['title'],
             'reddit': long_link.format(feed_item['data']['permalink']),
@@ -115,8 +107,10 @@ def check_new_feed(self):
     return cross_posts
 
 
-@app.task(bind=True, ignore_result=True)
+@app.task(bind=True, ignore_result=True, base=Task)
 def test_system(self):
+    import time
+
     log.info('starting task')
     time.sleep(10)
     log.info('done with task')

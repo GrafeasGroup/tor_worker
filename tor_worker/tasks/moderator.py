@@ -4,7 +4,7 @@ from tor_worker.user_interaction import (
     responses as bot_msg,
 )
 from tor_worker.app import app
-from tor_worker.tasks.base import RedditTask
+from tor_worker.tasks.base import Task
 from tor_worker.tasks.anyone import (
     process_comment,
     send_to_slack,
@@ -17,7 +17,7 @@ from praw.models import (
 )
 
 
-@app.task(bind=True, base=RedditTask)
+@app.task(bind=True, base=Task)
 def check_inbox(self):
     """
     Checks all unread messages in the inbox, routing the responses to other
@@ -62,7 +62,7 @@ def check_inbox(self):
         item.mark_read()
 
 
-@app.task(bind=True, base=RedditTask)
+@app.task(bind=True, base=Task)
 def process_message(self, message_id):
     """
     WORK IN PROGRESS::
@@ -75,7 +75,7 @@ def process_message(self, message_id):
     # TODO
 
 
-@app.task(bind=True, base=RedditTask)
+@app.task(bind=True, base=Task)
 def send_bot_message(self, body, message_id=None, to=None,
                      subject='Just bot things...'):
     """

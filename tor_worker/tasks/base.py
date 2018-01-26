@@ -1,6 +1,12 @@
-from celery import Task
+import os
+
+import celery
+
 import praw
 import requests
+import redis
+from slackclient import SlackClient
+
 from tor_worker import __version__
 
 
@@ -49,35 +55,39 @@ class cached_property(object):
         return value
 
 
-class RedditTask(Task):
+class Task(celery.Task):
     """
-    A set of tasks that include interaction with Reddit
+    Base class with lazy-loaded clients for external resources
     """
-
     @cached_property
     def reddit(self):
         return praw.Reddit(
             check_for_updates=False,
-            useragent=self.praw_user_agent,
+            user_agent=f'praw:org.grafeas.tor_worker:v{__version__} '
+            '(by the mods of /r/TranscribersOfReddit)',
         )
 
-    praw_user_agent = f'praw:org.grafeas.tor_worker:v{__version__} ' \
-        '(by the mods of /r/TranscribersOfReddit)'
-    autoretry_for = ()  # tuple of exceptions
-    retry_backoff = True
-    max_retries = 9
+    @cached_property
+    def redis(self):
+        conn = redis.StrictRedis()
 
-    track_started = True
+        return conn
 
-
-class AnonymousTask(Task):
-    def __init__(self):
-        self.http = requests.Session()
-        self.http.headers.update({
+    @cached_property
+    def http(self):
+        http = requests.Session()
+        http.headers.update({
             'User-Agent': f'python:org.grafeas.tor_worker:v{__version__} '
                           '(by the mods of /r/TranscribersOfReddit)',
         })
+        return http
 
+    @cached_property
+    def slack(self):
+        if os.getenv('SLACK_API_KEY'):
+            return SlackClient(os.getenv('SLACK_API_KEY'))
+
+    praw_user_agent = ''
     autoretry_for = ()
     retry_backoff = True
     max_retries = 9

@@ -19,9 +19,18 @@ def is_code_of_conduct(comment: Comment):
 def is_claimed_post_response(comment: Comment):
     if 'is yours' in comment.body.lower():
         return True
+    if 'already claimed' in comment.body.lower():
+        return True
 
     return False
 
 
 def is_claimable_post(comment: Comment):
+    # Need to accept the CoC before claiming
+    if is_code_of_conduct(comment):
+        return False
+
+    if 'is still unclaimed' in comment.body.lower():
+        return True
+
     return False

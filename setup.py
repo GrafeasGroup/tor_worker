@@ -79,7 +79,7 @@ setup(
     tests_require=testing_deps,
     install_requires=[
         'requests',
-        'praw==5.1.0',
+        'praw==5.0.1',
         'slackclient',
         'redis<3.0.0',
         'celery[redis]',

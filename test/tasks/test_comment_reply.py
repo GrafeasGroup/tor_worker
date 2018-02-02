@@ -3,9 +3,7 @@ import pytest  # noqa
 from tor_worker.tasks.anyone import process_comment
 
 import unittest
-from unittest.mock import patch, Mock
-
-from praw.models import Comment, Submission
+from unittest.mock import patch, Mock, MagicMock
 
 
 class ProcessConductCommentTest(unittest.TestCase):
@@ -14,33 +12,57 @@ class ProcessConductCommentTest(unittest.TestCase):
     """
 
     def setUp(self):
-        # self.submission = Submission(None, _data={'id': 'xyzpdq'})
-        # self.submission._comments = []
-        # self.submission.link_flair_text = 'Unclaimed'
-        self.comment = Comment(None, id='abcdef')
-        self.comment.author = 'me'
-        self.comment.body = 'I accept. I volunteer as tribute!'
-        self.comment.parent = Comment(None, id='123456')
-        self.comment.parent.author = 'transcribersofreddit'
-        self.comment.parent.body = 'You have to sign the code of conduct ' \
-            'before you can claim anything, you dunce.'
-        # self.submission._comments.append(self.comment)
+        sub = MagicMock(name='submission')
+        sub.shortlink = 'http://redd.it/abc123youandme'
+        sub.link_flair_text = 'Unclaimed'
+
+        parent = MagicMock(name='parent')
+        parent.submission = sub
+        parent.author.name = 'transcribersofreddit'
+        parent.body = 'You have to sign the code of conduct before you can ' \
+            'claim anything, you dunce.'
+
+        target = MagicMock(name='comment')
+        target.submission = sub
+        target.author.name = 'me'
+        target.body = 'I accept. I volunteer as tribute!'
+        target.parent = parent
+
+        self.comment = target
 
     @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    def test_agree(self, mock_reddit):
+    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
+    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
+    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    def test_agree(self, mock_claimable, mock_coc, mock_claimed_post,
+                   mock_reddit):
         self.comment.body = 'I accept. I volunteer as tribute!'
         mock_reddit.comment = Mock(name='comment', return_value=self.comment)
-        process_comment('abcdef')
 
+        process_comment('abcdef')
         # TODO: more to come when actual functionality is built-out
 
+        mock_reddit.comment.assert_called_once_with('abcdef')
+        mock_coc.assert_called_once_with(self.comment.parent)
+        mock_claimed_post.assert_not_called()
+        mock_claimable.assert_not_called()
+
     @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    def test_disagree(self, mock_reddit):
+    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
+    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
+    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    def test_disagree(self, mock_claimable, mock_coc, mock_claimed_post,
+                      mock_reddit):
         self.comment.body = 'Nah, go screw yourself.'
         mock_reddit.comment = Mock(name='comment', return_value=self.comment)
-        process_comment('abcdef')
 
+        process_comment('abcdef')
         # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_once_with('abcdef')
+        mock_coc.assert_called_once_with(self.comment.parent)
+        mock_claimed_post.assert_not_called()
+        mock_claimable.assert_not_called()
 
 
 class ProcessClaimableCommentTest(unittest.TestCase):
@@ -49,25 +71,167 @@ class ProcessClaimableCommentTest(unittest.TestCase):
     """
 
     def setUp(self):
-        self.comment = Comment(None, id='abcdef')
-        self.comment.author = 'me'
-        self.comment.body = 'I claim it! I volunteer as tribute!'
-        self.comment.parent = Comment(None, id='123456')
-        self.comment.parent.author = 'transcribersofreddit'
-        self.comment.parent.body = 'This post is unclaimed.'
+        sub = MagicMock(name='submission')
+        sub.shortlink = 'http://redd.it/abc123youandme'
+        sub.link_flair_text = 'Unclaimed'
+
+        parent = MagicMock(name='parent')
+        parent.submission = sub
+        parent.author.name = 'transcribersofreddit'
+        parent.body = 'This post is unclaimed'
+
+        target = MagicMock(name='comment')
+        target.submission = sub
+        target.author.name = 'me'
+        target.body = 'I claim it! I volunteer as tribute!'
+        target.parent = parent
+
+        self.comment = target
+
+    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.anyone.process_mod_intervention')
+    def test_other_bot_commented(self, mod_intervention, mock_reddit):
+        self.comment.author.name = 'transcribot'
+        mock_reddit.comment = Mock(name='comment', return_value=self.comment)
+        mod_intervention.return_value = None
+
+        process_comment('abcdef')
+        # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_with('abcdef')
+        mod_intervention.assert_not_called()
 
     @patch('tor_worker.tasks.anyone.process_comment.reddit')
     def test_claim(self, mock_reddit):
         self.comment.body = 'I claim this land in the name of France!'
         mock_reddit.comment = Mock(name='comment', return_value=self.comment)
-        process_comment('abcdef')
 
+        process_comment('abcdef')
         # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_with('abcdef')
 
     @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    def test_refuse(self, mock_reddit):
-        self.comment.body = 'Nah, I can do it later'
+    @patch('tor_worker.tasks.anyone.send_to_slack.delay')
+    def test_refuse(self, mock_slack, mock_reddit):
+        self.comment.body = 'Nah, screw it. I can do it later'
+        mock_slack.return_value = None
         mock_reddit.comment = Mock(name='comment', return_value=self.comment)
-        process_comment('abcdef')
 
+        process_comment('abcdef')
         # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_with('abcdef')
+        mock_slack.assert_not_called()
+
+    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.anyone.send_to_slack.delay')
+    def test_mod_intervention(self, mock_slack, mock_reddit):
+        self.comment.body = 'Nah, fuck it. I can do it later'
+        mock_slack.return_value = None
+        mock_reddit.comment = Mock(name='comment', return_value=self.comment)
+
+        process_comment('abcdef')
+        # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_with('abcdef')
+        mock_slack.assert_called()
+
+
+class ProcessDoneCommentTest(unittest.TestCase):
+    """
+    Given that the parent comment indicates the post is unclaimed...
+    """
+
+    def setUp(self):
+        sub = MagicMock(name='submission')
+        sub.shortlink = 'http://redd.it/abc123youandme'
+        sub.link_flair_text = 'In Progress'
+
+        parent = MagicMock(name='parent')
+        parent.submission = sub
+        parent.author.name = 'transcribersofreddit'
+        parent.body = 'The post is yours!'
+
+        target = MagicMock(name='comment')
+        target.submission = sub
+        target.author.name = 'me'
+        target.body = 'done'
+        target.parent = parent
+
+        self.comment = target
+
+    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
+    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
+    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    def test_misspelled_done(self, mock_claimable, mock_coc, mock_claimed_post,
+                             mock_reddit):
+        mock_coc.return_value = False
+        self.comment.body = 'deno'
+
+        mock_reddit.comment = Mock(name='comment', return_value=self.comment)
+
+        process_comment('abcdef')
+        # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_once_with('abcdef')
+        mock_coc.assert_called_once_with(self.comment.parent)
+        mock_claimed_post.assert_called_once_with(self.comment.parent)
+        mock_claimable.assert_not_called()
+
+    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
+    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
+    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    def test_done(self, mock_claimable, mock_coc, mock_claimed_post,
+                  mock_reddit):
+        mock_coc.return_value = False
+        mock_reddit.comment = Mock(name='comment', return_value=self.comment)
+
+        process_comment('abcdef')
+        # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_once_with('abcdef')
+        mock_coc.assert_called_once_with(self.comment.parent)
+        mock_claimed_post.assert_called_once_with(self.comment.parent)
+        mock_claimable.assert_not_called()
+
+    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
+    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
+    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    def test_override_as_admin(self, mock_claimable, mock_coc,
+                               mock_claimed_post, mock_reddit):
+        mock_coc.return_value = False
+        self.comment.body = '!override'
+        self.comment.author.name = 'tor_mod5'
+        mock_reddit.comment = Mock(name='comment', return_value=self.comment)
+
+        # TODO: Test exception being thrown because unprivileged user???
+        process_comment('abcdef')
+        # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_once_with('abcdef')
+        mock_coc.assert_called_once_with(self.comment.parent)
+        mock_claimed_post.assert_called_once_with(self.comment.parent)
+        mock_claimable.assert_not_called()
+
+    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
+    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
+    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    def test_override_as_anon(self, mock_claimable, mock_coc, mock_claimed_post,
+                              mock_reddit):
+        mock_coc.return_value = False
+        self.comment.body = '!override'
+        mock_reddit.comment = Mock(name='comment', return_value=self.comment)
+
+        # TODO: Test exception being thrown because unprivileged user???
+        process_comment('abcdef')
+        # TODO: more to come when actual functionality is built-out
+
+        mock_reddit.comment.assert_called_once_with('abcdef')
+        mock_coc.assert_called_once_with(self.comment.parent)
+        mock_claimed_post.assert_called_once_with(self.comment.parent)
+        mock_claimable.assert_not_called()

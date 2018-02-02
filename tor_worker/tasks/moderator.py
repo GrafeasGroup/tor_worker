@@ -3,13 +3,13 @@ from tor_worker.user_interaction import (
     format_bot_response as _,
     responses as bot_msg,
 )
-from tor_worker.app import app
 from tor_worker.tasks.base import Task
 from tor_worker.tasks.anyone import (
     process_comment,
     send_to_slack,
 )
 
+from celery import current_app as app
 from praw.models import (
     Message,
     Comment,

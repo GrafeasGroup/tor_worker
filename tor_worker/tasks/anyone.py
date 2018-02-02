@@ -77,21 +77,21 @@ def process_comment(self, comment_id):
     process_mod_intervention(reply, self.reddit)
 
     if is_code_of_conduct(reply.parent):
-        if 'i accept' in body:
+        if re.search(r'\bi accept\b', body):
             pass
         else:
             pass
 
     elif is_claimed_post_response(reply.parent):
-        if 'done' in body or 'deno' in body:
+        if re.search(r'\b(?:done|deno)\b', body):
             pass
-        elif '!override' in body:
+        elif re.search(r'(?=<^|\W)!override\b', body):
             pass
         else:
             pass
 
     elif is_claimable_post(reply.parent):
-        if 'claim' in body:
+        if re.search(r'\bclaim\b', body):
             pass
         else:
             pass

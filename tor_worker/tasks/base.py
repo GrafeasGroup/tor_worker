@@ -55,6 +55,10 @@ class cached_property(object):  # pragma: no cover
         return value
 
 
+class InvalidUser(Exception):
+    pass
+
+
 class Task(celery.Task):
     """
     Base class with lazy-loaded clients for external resources

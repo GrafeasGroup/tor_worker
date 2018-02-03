@@ -1,9 +1,8 @@
-from tor_worker import OUR_BOTS
 from tor_worker.user_interaction import (
     format_bot_response as _,
     responses as bot_msg,
 )
-from tor_worker.tasks.base import Task
+from tor_worker.tasks.base import Task, InvalidUser
 from tor_worker.tasks.anyone import (
     process_comment,
     send_to_slack,
@@ -29,7 +28,7 @@ def check_inbox(self):
             if 'username mention' in item.subject.lower():
                 send_bot_message.delay(to=item.author.name,
                                        subject='Username Call',
-                                       body=_(bot_msg['mentioned']))
+                                       body=_(bot_msg['mention']))
 
             else:
                 process_comment.delay(item.id)
@@ -46,10 +45,10 @@ def check_inbox(self):
                     '#general'
                 )
 
-            elif item.subject[0] == '!':
-                # TODO: Process admin command
-                process_admin_command.delay(item.id)
-                pass
+            elif item.subject and item.subject[0] == '!':
+                process_admin_command.delay(subject=item.subject,
+                                            body=item.body,
+                                            author=item.author.name)
             else:
                 send_to_slack.delay(
                     f'Unhandled message by '
@@ -59,34 +58,30 @@ def check_inbox(self):
                     '#general'
                 )
 
-        elif item.kind == 't3':  # Submission
-            # TODO: Handle submissions?
-            if item.author not in OUR_BOTS:
-                # TODO: Flair post as [META]
-                pass
-
         else:  # Other types (???)
-            # TODO: Log the ``item`` that reached here for later analysis
-            pass
+            # There shouldn't be any other types than Message and Comment,
+            # but on the off-chance there is, we'll log what it is here.
+            send_to_slack.delay(
+                f'Unhandled, unknown inbox item: {type(item).__name__}',
+                '#botstuffs'
+            )
 
         item.mark_read()
 
 
 @app.task(bind=True, base=Task)
-def process_admin_command(self, message_id):
+def process_admin_command(self, subject, body, author):
     """
-    WORK IN PROGRESS::
+    WORK IN PROGRESS
     """
-    msg = self.reddit.message(message_id)
-
     # TODO
-    msg
+    raise NotImplementedError()
 
 
 @app.task(bind=True, base=Task)
 def update_post_flair(self, submission_id, flair):
     """
-    WORK IN PROGRESS::
+    WORK IN PROGRESS
     """
     post = self.reddit.submission(submission_id)
 
@@ -97,7 +92,7 @@ def update_post_flair(self, submission_id, flair):
             )
             return
 
-    # TODO: alert the authorities that something has gone terribly wrong
+    raise NotImplementedError(f"Unknown flair, {repr(flair)}, for post")
 
 
 @app.task(bind=True, base=Task)
@@ -115,6 +110,11 @@ def send_bot_message(self, body, message_id=None, to=None,
 
     One of these _must_ be done.
     """
+    sender = self.reddit.user.me().name
+    if sender != 'transcribersofreddit':
+        raise InvalidUser(f'Attempting to send message as {sender}'
+                          f'instead of the official ToR bot')
+
     if message_id:
         self.reddit.message(message_id).reply(body)
     elif to:

@@ -18,7 +18,7 @@ class RedditGenerator(object):
         sub.shortlink = f'http://redd.it/abc123{sub.id}'
         sub.link_flair_text = 'Unclaimed'
 
-        sub.mark_as_read = MagicMock(side_effect=None, return_value=None)
+        sub.mark_read = MagicMock(side_effect=None, return_value=None)
 
         return sub
 
@@ -49,6 +49,7 @@ class RedditGenerator(object):
         msg.kind = 't4'
         msg.author = None
         msg.subject = ''
+        msg.body = ''
         msg.id = 'modm'
 
         msg.mark_as_read = MagicMock(side_effect=None, return_value=None)
@@ -60,22 +61,28 @@ class RedditGenerator(object):
         msg.kind = 't4'
         msg.author = self.generate_redditor()
         msg.subject = ''
+        msg.body = ''
         msg.id = 'mssg'
 
         msg.mark_as_read = MagicMock(side_effect=None, return_value=None)
+        msg.reply = MagicMock(side_effect=None, return_value=None)
 
         return msg
 
-    def generate_inbox(self, name='reddit.inbox'):
+    def generate_inbox(self, name='reddit.inbox', seed_data=False):
         box = MagicMock(name=name, spec=praw.models.Inbox)
-        msgs = [
-            self.generate_submission(),
-            self.generate_comment(),
-            self.generate_hail(),
-            self.generate_message(),
-            self.generate_mod_message(),
-        ]
-        random.shuffle(msgs)
+
+        if seed_data:
+            msgs = [
+                self.generate_comment(),
+                self.generate_hail(),
+                self.generate_message(),
+                self.generate_mod_message(),
+            ]
+            random.shuffle(msgs)
+        else:
+            msgs = []
+
         box.unread = MagicMock(side_effect=None, return_value=msgs)
 
         return box

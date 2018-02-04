@@ -1,5 +1,4 @@
 import pytest  # noqa
-import os
 
 from tor_worker.config import Config
 
@@ -17,7 +16,10 @@ def dummy_json_loader(path):
             },
         }
     elif path.endswith('subreddits.json'):
-        return {}
+        return {
+            'me_irl': {},
+            'ProgrammingHumor': {},
+        }
     else:
         raise NotImplementedError(path)
 
@@ -40,6 +42,7 @@ class InitConfigTest(unittest.TestCase):
         assert str(config) == 'Default configuration'
         assert config.gifs.no
         assert config.gifs.thumbs_up
+        assert 'me_irl' in config.subreddits
 
     @patch('tor_worker.config.helpers.assert_valid_directory',
            side_effect=None)
@@ -68,7 +71,3 @@ class InitConfigTest(unittest.TestCase):
         assert config.env in ['development', 'testing', 'production']
         assert config.name == 'foo'
         assert str(config) == '/r/foo configuration'
-
-
-class SubredditFactoryConfigTest(unittest.TestCase):
-    pass

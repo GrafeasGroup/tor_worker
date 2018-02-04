@@ -150,6 +150,12 @@ class Config(DeserializerBase):
             setattr(out, name, random.choice(urls))
         return out
 
+    @property
+    def subreddits(self):
+        path = os.path.join(self._base, 'bots', 'subreddits.json')
+        data = helpers.load_json(path)
+        return data.keys()
+
     @cached_property
     def _settings(self) -> dict:
         """

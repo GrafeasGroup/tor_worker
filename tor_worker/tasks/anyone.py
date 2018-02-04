@@ -1,4 +1,5 @@
 from tor_worker import OUR_BOTS
+from tor_worker.config import Config
 from tor_worker.context import (
     is_code_of_conduct,
     is_claimed_post_response,
@@ -151,25 +152,9 @@ def check_new_feed(self, subreddit):
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def check_new_feeds(self):
-    subreddits = [
-        'DnDGreentext',
-        'gametales',
-        'blind',
-        'DescriptionPlease',
-        'rpghorrorstories',
-        'TheChurchOfRogers',
-        'kierra',
-        'BestOfReports',
-        'ScottishPeopleTwitter',
-        'TrashyText',
-        'ihavesex',
-        # ... more, but too lazy to hardcode for now
+    config = Config()
 
-        'ProgrammerHumor',
-        'me_irl',
-    ]
-
-    for sub in subreddits:
+    for sub in config.subreddits:
         check_new_feed.delay(sub)
 
 

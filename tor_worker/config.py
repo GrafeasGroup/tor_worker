@@ -5,7 +5,7 @@ import random
 from tor_worker import cached_property
 
 
-class helpers:
+class helpers:  # pragma: no cover
     """
     Helper methods that are pulled out for an easier time with unit testing
     """
@@ -37,6 +37,10 @@ class helpers:
             return json.load(f.read())
 
 
+class RandomizedData(object):
+    pass
+
+
 class DeserializerBase(object):
     _base = os.environ.get('TOR_CONFIG_PATH', '.')
 
@@ -55,31 +59,14 @@ class DeserializerBase(object):
         else:
             helpers.assert_valid_directory(self._base)
 
-
-class Templates(DeserializerBase):
-    """
-    Deserializer for templates
-    """
-
-
-class Config(DeserializerBase):
-    """
-    Deserializer base for configuration file contents
-
-    This is the main entry point for the whole of the configuration set.
-
-    EXAMPLE::
-        >>> config = Config.subreddit('TranscribersOfReddit')
-        >>> config.gifs.no
-        'https://gfycat.com/HeavenlyElderlyHornet'
-        >>> config.gifs.no
-        'https://gfycat.com/PowerlessLikableHarvestmouse'
-        >>> config.env
-        'development'
-    """
+    def __str__(self):
+        if self.name == '[default]':
+            return 'Default configuration'
+        else:
+            return f'/r/{self.name} configuration'
 
     # These should not change on a per-subreddit basis
-    _protected_attributes = ['environment']
+    _protected_attributes = []
 
     @classmethod
     def subreddit(cls, name: str) -> 'Config':
@@ -103,6 +90,30 @@ class Config(DeserializerBase):
 
         return cls(_settings=data, _name=name)
 
+
+class Templates(DeserializerBase):
+    """
+    Deserializer for templates
+    """
+
+
+class Config(DeserializerBase):
+    """
+    Deserializer base for configuration file contents
+
+    This is the main entry point for the whole of the configuration set.
+
+    EXAMPLE::
+        >>> config = Config.subreddit('TranscribersOfReddit')
+        >>> config.gifs.no
+        'https://gfycat.com/HeavenlyElderlyHornet'
+        >>> config.gifs.no
+        'https://gfycat.com/PowerlessLikableHarvestmouse'
+        >>> config.env
+        'development'
+    """
+    _protected_attributes = ['environment']
+
     @cached_property
     def templates(self) -> Templates:
         return Templates(self.base)
@@ -119,7 +130,7 @@ class Config(DeserializerBase):
         return self._settings.get('environment', 'development')
 
     @property
-    def gifs(self) -> object:
+    def gifs(self) -> RandomizedData:
         """
         A property for accessing random GIFs for every occasion, randomized
         every time this property is accessed.
@@ -134,7 +145,7 @@ class Config(DeserializerBase):
         Note that the GIF urls above are randomized every time ``config.gifs``
         is accessed.
         """
-        out = object()
+        out = RandomizedData()
         for name, urls in self._settings['gifs'].items():
             setattr(out, name, random.choice(urls))
         return out

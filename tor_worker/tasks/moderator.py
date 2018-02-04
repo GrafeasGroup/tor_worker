@@ -46,9 +46,9 @@ def check_inbox(self):
                 )
 
             elif item.subject and item.subject[0] == '!':
-                process_admin_command.delay(subject=item.subject,
-                                            body=item.body,
-                                            author=item.author.name)
+                process_admin_command.delay(author=item.author.name,
+                                            subject=item.subject,
+                                            body=item.body)
             else:
                 send_to_slack.delay(
                     f'Unhandled message by '
@@ -58,7 +58,7 @@ def check_inbox(self):
                     '#general'
                 )
 
-        else:  # Other types (???)
+        else:  # pragma: no cover
             # There shouldn't be any other types than Message and Comment,
             # but on the off-chance there is, we'll log what it is here.
             send_to_slack.delay(
@@ -70,23 +70,19 @@ def check_inbox(self):
 
 
 @app.task(bind=True, base=Task)
-def process_admin_command(self, subject, body, author):
+def process_admin_command(self, author, subject, body):
     """
     WORK IN PROGRESS
     """
-    # TODO
     raise NotImplementedError()
 
 
 @app.task(bind=True, base=Task)
 def update_post_flair(self, submission_id, flair):
-    """
-    WORK IN PROGRESS
-    """
     post = self.reddit.submission(submission_id)
 
     for choice in post.flair.choices():
-        if choice['flair_text'] == flair:
+        if choice['flair_text'].lower() == flair.lower():
             post.flair.select(
                 flair_template_id=choice['flair_template_id']
             )

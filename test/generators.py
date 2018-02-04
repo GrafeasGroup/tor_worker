@@ -20,6 +20,39 @@ class RedditGenerator(object):
 
         sub.mark_read = MagicMock(side_effect=None, return_value=None)
 
+        sub.flair = MagicMock(
+            spec=praw.models.reddit.submission.SubmissionFlair
+        )
+
+        def flair_choices(*args, **kwargs):
+            template = {
+                'flair_text': 'Foo',
+                'flair_template_id': '680f43b8-1fec-11e3-80d1-12313b0b80bc',
+                'flair_css_class': '',
+                'flair_text_editable': False,
+                'flair_position': 'left',
+            }
+            return [
+                {**template,
+                 **{'flair_text': 'Unclaimed',
+                    'flair_template_id': '1'},
+                 },
+                {**template,
+                 **{'flair_text': 'In Progress',
+                    'flair_template_id': '2'},
+                 },
+                {**template,
+                 **{'flair_text': 'Completed',
+                    'flair_template_id': '3'},
+                 },
+                {**template,
+                 **{'flair_text': 'Meta',
+                    'flair_template_id': '4'},
+                 },
+            ]
+        sub.flair.choices = MagicMock(side_effect=flair_choices)
+        sub.flair.select = MagicMock(return_values=None)
+
         return sub
 
     def generate_comment(self, name='comment'):

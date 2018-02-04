@@ -14,15 +14,11 @@ app.conf.task_default_queue = 'default'
 app.conf.beat_schedule = {
     # 'check_inbox': {
     #     'task': 'tor_worker.tasks.moderator.check_inbox',
-    #     'schedule': 90,
+    #     'schedule': 90,  # seconds
     # },
-    'check-subreddit-feeds': {
-        'task': 'tor_worker.tasks.anyone.check_new_feeds',
-        'schedule': 30,  # seconds
-    },
-    # 'test-system': {
-    #     'task': 'tor_worker.tasks.anyone.test_system',
-    #     'schedule': 15,
+    # 'check-subreddit-feeds': {
+    #     'task': 'tor_worker.tasks.anyone.check_new_feeds',
+    #     'schedule': 30,  # seconds
     # },
 }
 

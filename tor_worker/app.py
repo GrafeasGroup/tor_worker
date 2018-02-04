@@ -1,9 +1,12 @@
-from tor_worker import __BROKER_URL__
+import logging
+import os
 
-from celery import Celery
+from tor_worker import __BROKER_URL__, __version__
+
+from celery import Celery, signals
 
 
-app = Celery('tasks', broker=__BROKER_URL__)
+app = Celery('tor_worker', broker=__BROKER_URL__)
 app.conf.timezone = 'UTC'
 app.conf.enable_utc = True
 app.conf.task_default_queue = 'default'
@@ -54,22 +57,44 @@ If something does not have any particular requirements (e.g., no rate-limiting
 or concurrency issues to work around), we put it in the 'default' queue. All
 tasks not explicitly declared below are put in that queue.
 """
-app.conf.task_routes = {
-    'tor_worker.tasks.moderator.check_inbox': {
+app.conf.task_routes = ([
+    ('tor_worker.tasks.moderator.check_inbox', {
         'queue': 'u_transcribersofreddit'
-    },
-    'tor_worker.tasks.moderator.process_message': {
+    }),
+    ('tor_worker.tasks.moderator.process_message', {
         'queue': 'u_transcribersofreddit'
-    },
-    'tor_worker.tasks.moderator.send_bot_message': {
+    }),
+    ('tor_worker.tasks.moderator.send_bot_message', {
         'queue': 'u_transcribersofreddit'
-    },
-    'tor_worker.tasks.moderator.*': {
+    }),
+    ('tor_worker.tasks.moderator.*', {
         'queue': 'f_tor_mod'
-    },
-}
+    }),
+],)
+
+
+@signals.after_setup_task_logger.connect
+def setup_logging(logger, *args, **kwargs):
+    """
+    Sets up Bugsnag and Sentry logging
+    """
+    import bugsnag
+
+    bs_api_key = os.environ.get('BUGSNAG_API_KEY', None)
+    if bs_api_key:
+        bugsnag.configure(api_key=bs_api_key,
+                          app_version=__version__)
+
+        bs = bugsnag.handler.BugsnagHandler()
+        bs.setLevel(logging.ERROR)
+        logging.getLogger('').addHandler(bs)
+        logger.debug('Added Bugsnag error reporting handler')
+    else:
+        logger.warning('Missing BUGSNAG_API_KEY environment variable. '
+                       'Bugsnag setup was skipped.')
 
 
 # All of the below imports are 'useless', per static analysis, but required for
 # celery to register all of the tasks in the system
-import tor_worker.tasks.all  # noqa
+import tor_worker.tasks.moderator  # noqa
+import tor_worker.tasks.anyone  # noqa

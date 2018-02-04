@@ -83,5 +83,6 @@ setup(
         'slackclient',
         'redis<3.0.0',
         'celery[redis]',
+        'bugsnag',
     ],
 )

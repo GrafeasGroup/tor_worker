@@ -161,7 +161,8 @@ def check_new_feeds(self):
 @app.task(bind=True, ignore_result=True, base=Task)
 def test_system(self):
     import time
+    import random
 
     log.info('starting task')
-    time.sleep(10)
+    time.sleep(random.choice(range(10)))
     log.info('done with task')

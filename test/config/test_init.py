@@ -71,3 +71,15 @@ class InitConfigTest(unittest.TestCase):
         assert config.env in ['development', 'testing', 'production']
         assert config.name == 'foo'
         assert str(config) == '/r/foo configuration'
+
+    @patch('tor_worker.config.helpers.assert_valid_directory',
+           side_effect=None)
+    @patch('tor_worker.config.helpers.load_json',
+           side_effect=dummy_json_loader)
+    def test_lazy_loaded_attributes(self, mock_loader, mock_valid_directory):
+        config = Config()
+
+        assert hasattr(config.templates, 'content'), 'Config.templates must ' \
+            'be of type Templates'
+        assert hasattr(config.filters, 'score_allowed'), 'Config.filters must' \
+            ' be of type PostConstraintSet'

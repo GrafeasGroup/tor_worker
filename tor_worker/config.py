@@ -2,6 +2,7 @@ import json
 import os
 import random
 
+
 from tor_worker import cached_property
 
 
@@ -32,9 +33,13 @@ class helpers:  # pragma: no cover
 
     @staticmethod
     def load_json(path):
+        return json.load(helpers.load_file(path))
+
+    @staticmethod
+    def load_file(path):
         helpers.assert_valid_file(path)
         with open(path) as f:
-            return json.load(f.read())
+            return f.read()
 
 
 class RandomizedData(object):
@@ -96,6 +101,81 @@ class Templates(DeserializerBase):
     Deserializer for templates
     """
 
+    def content(self, domain: str) -> str:
+        post_type = self.url_type(domain)
+        path = os.path.join(self._base, 'templates', post_type)
+
+        # Check fro domain-specific instructions
+        file_path = os.path.join(path, f'{domain}.md')
+        if not helpers.is_valid_file(file_path):
+            # Use default if no domain-specific instructions
+            file_path = os.path.join(path, 'default.md')
+
+        return helpers.load_file(file_path)
+
+    def url_type(self, domain: str) -> str:
+        if domain in self._settings.get('filters', {}).get('domains', {})\
+                .get('images', []):
+            return 'images'
+        elif domain in self._settings.get('filters', {}).get('domains', {})\
+                .get('video', []):
+            return 'video'
+        elif domain in self._settings.get('filters', {}).get('domains', {})\
+                .get('audio', []):
+            return 'audio'
+        else:
+            return 'other'
+
+
+class PostConstraintSet(object):
+    """
+    Helper for filtering posts. Send it data and ``PostConstraintSet`` will say
+    whether it is allowed.
+
+        >>> filters = PostConstraintSet(_settings=data)
+        >>> filters.url_allowed('www.example.com')
+        True
+        >>> filters.score_allowed(post_upvotes)
+        False
+    """
+
+    def __init__(self, _settings={}):
+        self._settings = _settings
+
+    def url_allowed(self, domain: str) -> bool:
+        """
+        Checks if the url is on the whitelisted set of domains
+
+            >>> constraints = PostConstraintSet(_settings=data)
+            >>> constraints.url_allowed('www.example.com')
+            True
+            >>> constraints.url_allowed('www.example.net')
+            False
+        """
+        if self._settings.get('bypass_domain_filter', False):
+            return True
+
+        images = self._settings.get('filters', {}).get('domains', {})\
+            .get('images', [])
+        video = self._settings.get('filters', {}).get('domains', {})\
+            .get('video', [])
+        audio = self._settings.get('filters', {}).get('domains', {})\
+            .get('audio', [])
+
+        allowed_domains = images + video + audio
+
+        if len(allowed_domains) == 0:
+            # Allow everything if there is no whitelist
+            return True
+
+        return bool(domain in allowed_domains)
+
+    def score_allowed(self, score):
+        """
+        Checks if the post's score meets our pre-configured threshold
+        """
+        return score >= self._settings.get('upvote_filter', 0)
+
 
 class Config(DeserializerBase):
     """
@@ -116,7 +196,7 @@ class Config(DeserializerBase):
 
     @cached_property
     def templates(self) -> Templates:
-        return Templates(self.base)
+        return Templates(self._base, _settings=self._default)
 
     @property
     def env(self) -> str:
@@ -150,6 +230,10 @@ class Config(DeserializerBase):
             setattr(out, name, random.choice(urls))
         return out
 
+    @cached_property
+    def filters(self):
+        return PostConstraintSet(_settings=self._settings)
+
     @property
     def subreddits(self):
         path = os.path.join(self._base, 'bots', 'subreddits.json')
@@ -158,6 +242,15 @@ class Config(DeserializerBase):
 
     @cached_property
     def _settings(self) -> dict:
+        """
+        Helper property to read bot settings scoped to the current subreddit
+        """
+        # Set the default using ``self._default``, but can be overridden when
+        # object is initialized with the ``_settings`` param.
+        return self._default
+
+    @cached_property
+    def _default(self) -> dict:
         """
         Helper property to read on-the-fly from the bot settings.json file
         """

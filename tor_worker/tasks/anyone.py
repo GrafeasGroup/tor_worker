@@ -10,7 +10,10 @@ from tor_worker.tasks.base import Task
 import re
 
 from celery.utils.log import get_task_logger
-from celery import current_app as app
+from celery import (
+    current_app as app,
+    signature
+)
 from praw.models import Comment
 
 
@@ -98,64 +101,87 @@ def process_comment(self, comment_id):
             pass
 
 
-@app.task(bind=True, rate_limit='50/m', base=Task)
-def check_new_feed(self, subreddit):
-    r = self.http.get(f'https://www.reddit.com/r/{subreddit}/new.json')
-    r.raise_for_status()
-    feed = r.json()
-
-    long_link = 'https://www.reddit.com{}'
-
-    # TODO: Move this outside of the scope of this task
-    AUTHORIZED_DOMAINS = [
-        'i.imgur.com',
-        'imgur.com',
-        'i.imgflip.com',
-        'i.redd.it',
-        'v.redd.it',
-    ]
-
-    if feed['kind'].lower() != 'listing':
-        raise 'Invalid payload'
-
-    cross_posts = []
-
-    for feed_item in feed['data']['children']:
-        if feed_item['data']['is_self']:
-            log.debug('{} item is a self-post'.format(feed_item['data']['id']))
-            continue
-        if feed_item['data']['locked']:
-            log.debug('{} item is locked'.format(feed_item['data']['id']))
-            continue
-        if feed_item['data']['score'] < 10:
-            log.debug('{} item does not meet the necessary criteria'.format(
-                feed_item['data']['id']))
-            # Temporary disable for testing
-            # continue
-            pass
-        if feed_item['data']['domain'] not in AUTHORIZED_DOMAINS:
-            log.debug('{} item is on an unsupported domain'.format(
-                feed_item['data']['id']))
-            continue
-
-        # TODO: check if post is already added
-
-        cross_posts.append({
-            'title': feed_item['data']['title'],
-            'reddit': long_link.format(feed_item['data']['permalink']),
-            'media': feed_item['data']['url'],
-        })
-
-    log.info('Found %d posts for /r/%s' % (len(cross_posts), subreddit))
-    return cross_posts
-
-
 @app.task(bind=True, ignore_result=True, base=Task)
-def check_new_feeds(self):
+def check_new_feeds(self):  # pragma: no coverage
     config = Config()
 
     for sub in config.subreddits:
         check_new_feed.delay(sub)
+
+
+@app.task(bind=True, rate_limit='50/m', base=Task)
+def check_new_feed(self, subreddit):
+    # from tor_worker.tasks.moderator import (
+    #     post_to_tor,
+    #     # intro_bot_comment,
+    #     # update_post_flair,
+    # )
+
+    config = Config.subreddit(subreddit)
+
+    r = self.http.get(f'https://www.reddit.com/r/{subreddit}/new.json')
+    r.raise_for_status()
+    feed = r.json()
+
+    # long_link = 'https://www.reddit.com{}'
+
+    if feed['kind'].lower() != 'listing':
+        raise 'Invalid payload'
+
+    cross_posts = 0
+
+    for feed_item in feed['data']['children']:
+        if feed_item['data']['is_self']:
+            # Self-posts don't need to be transcribed. Duh!
+            continue
+        if feed_item['data']['locked'] or feed_item['data']['archived']:
+            # No way to comment with a transcription if post is read-only
+            continue
+        if feed_item['data']['author'] is None:
+            # Author gone means deleted, and we don't want to cross-post then
+            continue
+        if self.redis.sismember('post_ids', feed_item['data']['id']):
+            # Post is already processed, but may not be completed
+            continue
+        if not config.filters.score_allowed(feed_item['data']['score']):
+            # Must meet subreddit-specific settings on score threshold
+            continue
+        if not config.filters.url_allowed(feed_item['data']['domain']):
+            # Must be on one of the whitelisted domains (if any given)
+            continue
+
+        # content_type = config.templates.url_type(feed_item['data']['domain'])
+        # content_template = config.templates.content(feed_item['data']['domain']) # noqa
+
+        # payload = {
+        #     'title': feed_item['data']['title'],
+        #     'reddit': long_link.format(feed_item['data']['permalink']),
+        #     'media': feed_item['data']['url'],
+        #     'template': content_template,
+        #     'type': content_type,
+        # }
+
+        job = signature('tor_worker.tasks.post_to_tor', kwargs={
+            'sub': feed_item['data']['subreddit'],
+            'title': feed_item['data']['title'],
+            'link': feed_item['data']['permalink'],
+            'domain': feed_item['data']['domain'],
+        })
+
+        job.apply_async()
+
+        # TODO: Queue post job
+        # TODO: Chain first comment on post job
+        # TODO: Chain update flair on post job
+        # TODO: Chain post queuing completed callback
+        # TODO: Chain total_posted++ on post job
+        # TODO: Chain total_new++ on post job
+        # TODO: Chain OCR bot job after first comment
+
+        # TODO: queue job to cross-post to /r/TranscribersOfReddit
+        cross_posts += 1
+
+    # log.info(f'Found {cross_posts} posts for /r/{subreddit}')
 
 
 @app.task(bind=True, ignore_result=True, base=Task)

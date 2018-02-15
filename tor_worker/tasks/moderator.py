@@ -1,3 +1,4 @@
+from tor_worker.config import Config
 from tor_worker.user_interaction import (
     format_bot_response as _,
     responses as bot_msg,
@@ -119,3 +120,26 @@ def send_bot_message(self, body, message_id=None, to=None,
         raise NotImplementedError(
             "Must give either a value for ``message_id`` or ``to``"
         )
+
+
+@app.task(bind=True, base=Task)
+def post_to_tor(self, sub, title, link, domain):
+    config = Config.subreddit(sub)
+    max_title_length = 250
+    if len(title) > max_title_length:
+        title = title[:(max_title_length - 3)] + '...'
+
+    post_type = config.templates.url_type(domain)
+    post_template = config.templates.content(domain)
+
+    submission = self.reddit.subreddit('TranscribersOfReddit').submit(
+        title=f'{sub} | {post_type.title()} | "{title}"',
+    )
+    update_post_flair.delay(submission.id, 'Unclaimed')
+
+    self.redis.incr()
+
+
+@app.task(bind=True, base=Task)
+def intro_bot_comment(self, submission_id, post_type, template):
+    pass

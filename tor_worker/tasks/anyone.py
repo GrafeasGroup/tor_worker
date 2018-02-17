@@ -118,11 +118,8 @@ def check_new_feeds(self):  # pragma: no coverage
 
 @app.task(bind=True, rate_limit='50/m', base=Task)
 def check_new_feed(self, subreddit):
-    # from tor_worker.tasks.moderator import (
-    #     post_to_tor,
-    #     # intro_bot_comment,
-    #     # update_post_flair,
-    # )
+    # Using `signature` here so we don't have a recursive import loop
+    post_to_tor = signature('tor_worker.tasks.moderator.post_to_tor')
 
     config = Config.subreddit(subreddit)
 
@@ -130,14 +127,16 @@ def check_new_feed(self, subreddit):
     r.raise_for_status()
     feed = r.json()
 
-    # long_link = 'https://www.reddit.com{}'
-
-    if feed['kind'].lower() != 'listing':
-        raise 'Invalid payload'
+    if feed['kind'].lower() != 'listing':  # pragma: no coverage
+        raise 'Invalid payload for listing'
 
     cross_posts = 0
 
     for feed_item in feed['data']['children']:
+        if feed_item['kind'].lower() != 't3':  # pragma: no coverage
+            # Only allow t3 (submission) types
+            log.warning(f'Unsupported kind in /new feed with {repr(feed_item)}')
+            continue
         if feed_item['data']['is_self']:
             # Self-posts don't need to be transcribed. Duh!
             continue
@@ -157,38 +156,17 @@ def check_new_feed(self, subreddit):
             # Must be on one of the whitelisted domains (if any given)
             continue
 
-        # content_type = config.templates.url_type(feed_item['data']['domain'])
-        # content_template = config.templates.content(feed_item['data']['domain']) # noqa
-
-        # payload = {
-        #     'title': feed_item['data']['title'],
-        #     'reddit': long_link.format(feed_item['data']['permalink']),
-        #     'media': feed_item['data']['url'],
-        #     'template': content_template,
-        #     'type': content_type,
-        # }
-
-        job = signature('tor_worker.tasks.post_to_tor', kwargs={
-            'sub': feed_item['data']['subreddit'],
-            'title': feed_item['data']['title'],
-            'link': feed_item['data']['permalink'],
-            'domain': feed_item['data']['domain'],
-        })
-
-        job.apply_async()
-
-        # TODO: Queue post job
-        # TODO: Chain first comment on post job
-        # TODO: Chain update flair on post job
-        # TODO: Chain post queuing completed callback
-        # TODO: Chain total_posted++ on post job
-        # TODO: Chain total_new++ on post job
-        # TODO: Chain OCR bot job after first comment
-
-        # TODO: queue job to cross-post to /r/TranscribersOfReddit
+        post_to_tor.apply_async(
+            kwargs={
+                'sub': feed_item['data']['subreddit'],
+                'title': feed_item['data']['title'],
+                'link': feed_item['data']['permalink'],
+                'domain': feed_item['data']['domain'],
+            }
+        )
         cross_posts += 1
 
-    # log.info(f'Found {cross_posts} posts for /r/{subreddit}')
+    log.info(f'Found {cross_posts} posts for /r/{subreddit}')
 
 
 @app.task(bind=True, ignore_result=True, base=Task)

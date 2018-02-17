@@ -3,11 +3,7 @@ import pytest  # noqa
 from tor_worker.tasks.anyone import check_new_feed
 
 import unittest
-from unittest.mock import (
-    ANY,
-    patch,
-    MagicMock,
-)
+from unittest.mock import patch, MagicMock
 
 
 def noop_callable(*args, **kwargs):
@@ -19,7 +15,7 @@ def noop_callable(*args, **kwargs):
 
 class FeedCheckerTest(unittest.TestCase):
 
-    def reddit_post_json(self):
+    def submission(self):
         return {
             'kind': 't3',
             'data': {
@@ -38,31 +34,56 @@ class FeedCheckerTest(unittest.TestCase):
             },
         }
 
-    def reddit_json(self):
-        return {
-            'kind': 'listing',
-            'data': {
-                'children': [
-                    self.reddit_post_json(),
-                    self.reddit_post_json(),
-                    self.reddit_post_json(),
-                ]
-            }
-        }
-
+    @patch('tor_worker.tasks.anyone.log', side_effect=None)
     @patch('tor_worker.tasks.anyone.Config')
     @patch('tor_worker.tasks.anyone.signature')
     @patch('tor_worker.tasks.anyone.check_new_feed.http.get')
     @patch('tor_worker.tasks.anyone.check_new_feed.redis', side_effect=None)
     def test_feed_reader(self, mock_redis, mock_http_get, mock_signature,
-                         mock_config):
-        sig = MagicMock(name='task_signature')
-        mock_signature.return_value = sig
+                         mock_config, mock_log):
+        post_to_tor = MagicMock(name='task_signature')
+        mock_signature.return_value = post_to_tor
         mock_config.subreddit = MagicMock(name='Config.subreddit',
                                           return_value=mock_config)
         mock_response = MagicMock(name='http_response')
         mock_http_get.return_value = mock_response
-        mock_response.json.return_value = self.reddit_json()
+
+        out = {
+            'kind': 'listing',
+            'data': {
+                'children': [
+                    self.submission(),
+                    self.submission(),
+                    self.submission(),
+                    self.submission(),
+                    self.submission(),
+                    self.submission(),
+                    self.submission(),
+                    self.submission(),
+                    # self.submission(),
+                    # self.submission(),
+                ]
+            }
+        }
+        mock_response.json.return_value = out
+
+        # Post 1234 has already been processed
+        mock_redis.sismember.side_effect = \
+            lambda q, i: q == 'post_ids' and i == '1234'
+        # Only imgur is an allowed domain
+        mock_config.filters.url_allowed.side_effect = \
+            lambda u: u.startswith('imgur')
+        # Minimum score threshold is 10
+        mock_config.filters.score_allowed.side_effect = lambda s: s > 10
+
+        # Any one of these are skip conditions
+        out['data']['children'][0]['data']['is_self'] = True
+        out['data']['children'][1]['data']['locked'] = True
+        out['data']['children'][2]['data']['archived'] = True
+        out['data']['children'][3]['data']['score'] = 1
+        out['data']['children'][4]['data']['author'] = None
+        out['data']['children'][5]['data']['domain'] = '4chan.com'
+        out['data']['children'][6]['data']['id'] = '1234'
 
         # Is the post already processed?
         mock_redis.sismember.return_value = False
@@ -73,6 +94,6 @@ class FeedCheckerTest(unittest.TestCase):
 
         check_new_feed('TIL')
 
-        mock_signature.assert_called_with('tor_worker.tasks.post_to_tor',
-                                          kwargs=ANY)
-        sig.apply_async.assert_called()
+        mock_signature.assert_called_once_with(
+            'tor_worker.tasks.moderator.post_to_tor')
+        post_to_tor.apply_async.assert_called_once()

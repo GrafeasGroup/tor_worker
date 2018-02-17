@@ -9,10 +9,14 @@ from tor_worker.tasks.anyone import (
     send_to_slack,
 )
 
+from celery.utils.log import get_task_logger
 from celery import current_app as app
 
 
-@app.task(bind=True, base=Task)
+log = get_task_logger(__name__)
+
+
+@app.task(bind=True, ignore_result=True, base=Task)
 def check_inbox(self):
     """
     Checks all unread messages in the inbox, routing the responses to other
@@ -60,17 +64,19 @@ def check_inbox(self):
                 )
 
         else:  # pragma: no cover
+
             # There shouldn't be any other types than Message and Comment,
             # but on the off-chance there is, we'll log what it is here.
             send_to_slack.delay(
                 f'Unhandled, unknown inbox item: {type(item).__name__}',
                 '#botstuffs'
             )
+            log.warning(f'Unhandled, unknown inbox item: {type(item).__name__}')
 
         item.mark_read()
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, ignore_result=True, base=Task)
 def process_admin_command(self, author, subject, body):
     """
     WORK IN PROGRESS
@@ -78,7 +84,7 @@ def process_admin_command(self, author, subject, body):
     raise NotImplementedError()
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, ignore_result=True, base=Task)
 def update_post_flair(self, submission_id, flair):
     post = self.reddit.submission(submission_id)
 
@@ -92,7 +98,7 @@ def update_post_flair(self, submission_id, flair):
     raise NotImplementedError(f"Unknown flair, {repr(flair)}, for post")
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, ignore_result=True, base=Task)
 def send_bot_message(self, body, message_id=None, to=None,
                      subject='Just bot things...'):
     """
@@ -122,7 +128,7 @@ def send_bot_message(self, body, message_id=None, to=None,
         )
 
 
-@app.task(bind=True, base=Task)
+@app.task(bind=True, ignore_result=True, base=Task)
 def post_to_tor(self, sub, title, link, domain):
     config = Config.subreddit(sub)
     max_title_length = 250

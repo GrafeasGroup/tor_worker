@@ -109,7 +109,7 @@ class Templates(DeserializerBase):
         file_path = os.path.join(path, f'{domain}.md')
         if not helpers.is_valid_file(file_path):
             # Use default if no domain-specific instructions
-            file_path = os.path.join(path, 'default.md')
+            file_path = os.path.join(path, 'base.md')
 
         return helpers.load_file(file_path)
 

@@ -21,7 +21,7 @@ class TemplateDeserializerTest(unittest.TestCase):
         for post_type in ['audio', 'images', 'other', 'video']:
             pth = os.path.join(cls.dummy_path, 'templates', post_type)
             os.makedirs(pth)
-            with open(os.path.join(pth, 'default.md'), 'w') as f:
+            with open(os.path.join(pth, 'base.md'), 'w') as f:
                 f.write(f'default {post_type} content')
 
     @classmethod

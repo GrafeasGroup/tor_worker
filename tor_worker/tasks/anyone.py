@@ -81,23 +81,30 @@ def process_comment(self, comment_id):
     process_mod_intervention(reply, self.reddit)
 
     if is_code_of_conduct(reply.parent):
-        if re.search(r'\bi accept\b', body):
+        if re.search(r'\bi accept\b', body):  # pragma: no coverage
+            # TODO: Fill out coc accept scenario and remove pragma directive
             pass
-        else:
+        else:  # pragma: no coverage
+            # TODO: Fill out error scenario and remove pragma directive
             pass
 
     elif is_claimed_post_response(reply.parent):
-        if re.search(r'\b(?:done|deno)\b', body):
+        if re.search(r'\b(?:done|deno)\b', body):  # pragma: no coverage
+            # TODO: Fill out done scenario and remove pragma directive
             pass
-        elif re.search(r'(?=<^|\W)!override\b', body):
+        elif re.search(r'(?=<^|\W)!override\b', body):  # pragma: no coverage
+            # TODO: Fill out override scenario and remove pragma directive
             pass
-        else:
+        else:  # pragma: no coverage
+            # TODO: Fill out error scenario and remove pragma directive
             pass
 
     elif is_claimable_post(reply.parent):
-        if re.search(r'\bclaim\b', body):
+        if re.search(r'\bclaim\b', body):  # pragma: no coverage
+            # TODO: Fill out claim scenario and remove pragma directive
             pass
-        else:
+        else:  # pragma: no coverage
+            # TODO: Fill out error scenario and remove pragma directive
             pass
 
 
@@ -185,7 +192,7 @@ def check_new_feed(self, subreddit):
 
 
 @app.task(bind=True, ignore_result=True, base=Task)
-def test_system(self):
+def test_system(self):  # pragma: no coverage
     import time
     import random
 

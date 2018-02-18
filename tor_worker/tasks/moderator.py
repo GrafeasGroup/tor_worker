@@ -1,7 +1,9 @@
 from tor_worker.config import Config
 from tor_worker.user_interaction import (
     format_bot_response as _,
+    message_link,
     responses as bot_msg,
+    post_comment,
 )
 from tor_worker.tasks.base import Task, InvalidUser
 from tor_worker.tasks.anyone import (
@@ -11,6 +13,8 @@ from tor_worker.tasks.anyone import (
 
 from celery.utils.log import get_task_logger
 from celery import current_app as app
+
+import textwrap
 
 
 log = get_task_logger(__name__)
@@ -31,6 +35,7 @@ def check_inbox(self):
 
         if item.kind == 't1':  # Comment
             if 'username mention' in item.subject.lower():
+                log.info(f'Username mention by /u/{item.author.name}')
                 send_bot_message.delay(to=item.author.name,
                                        subject='Username Call',
                                        body=_(bot_msg['mention']))
@@ -42,6 +47,7 @@ def check_inbox(self):
             # Very rarely we may actually get a message from Reddit admins, in
             # which case there will be no author attribute
             if item.author is None:
+                log.info(f'Received message from the admins: {item.subject}')
                 send_to_slack.delay(
                     f'*Incoming message without an author*\n\n'
                     f'*Subject:* {item.subject}\n'
@@ -53,13 +59,19 @@ def check_inbox(self):
             elif item.subject and item.subject[0] == '!':
                 process_admin_command.delay(author=item.author.name,
                                             subject=item.subject,
-                                            body=item.body)
+                                            body=item.body,
+                                            message_id=item.id)
             else:
+                log.info(f'Received unhandled message from '
+                         f'/u/{item.author.name}. Subject: '
+                         f'{repr(item.subject)}')
                 send_to_slack.delay(
-                    f'Unhandled message by '
-                    f'<https://reddit.com/user/{item.author.name}|'
-                    f'u/{item.author.name}> -- '
-                    f'*{item.subject}*:\n{item.body}'
+                    f'Unhandled message by [/u/{item.author.name}]'
+                    f'(https://reddit.com/user/{item.author.name})'
+                    f'\n\n'
+                    f'*Subject:* {item.subject}'
+                    f'\n\n'
+                    f'{item.body}'
                     '#general'
                 )
 
@@ -77,15 +89,25 @@ def check_inbox(self):
 
 
 @app.task(bind=True, ignore_result=True, base=Task)
-def process_admin_command(self, author, subject, body):
+def process_admin_command(self, author, subject, body, message_id):
     """
     WORK IN PROGRESS
     """
+    # TODO
     raise NotImplementedError()
 
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def update_post_flair(self, submission_id, flair):
+    """
+    Updates the flair of the original post to the pre-existing flair template id
+    given the string value of the flair. If there is no pre-existing styling for
+    that flair choice, task will error out with ``NotImplementedError``.
+
+    EXAMPLE:
+        ``flair`` is "unclaimed", sets the post to "Unclaimed" with pre-existing
+        styling
+    """
     post = self.reddit.submission(submission_id)
 
     for choice in post.flair.choices():
@@ -131,21 +153,33 @@ def send_bot_message(self, body, message_id=None, to=None,
 @app.task(bind=True, ignore_result=True, base=Task)
 def post_to_tor(self, sub, title, link, domain):
     config = Config.subreddit(sub)
-    max_title_length = 250
-    if len(title) > max_title_length:
-        title = title[:(max_title_length - 3)] + '...'
+    title = textwrap.shorten(title, width=250, placeholder='...')
 
     post_type = config.templates.url_type(domain)
     post_template = config.templates.content(domain)
+    footer = config.templates.footer
 
     submission = self.reddit.subreddit('TranscribersOfReddit').submit(
         title=f'{sub} | {post_type.title()} | "{title}"',
+        url=link,
     )
+
     update_post_flair.delay(submission.id, 'Unclaimed')
 
-    self.redis.incr()
+    # Add completed post to tracker
+    self.redis.sadd('complete_post_ids', submission.id)
+    self.redis.incr('total_posted', amount=1)
+    self.redis.incr('total_new', amount=1)
 
+    # TODO: OCR job for this comment
 
-@app.task(bind=True, base=Task)
-def intro_bot_comment(self, submission_id, post_type, template):
-    pass
+    reply = bot_msg['intro_comment'].format(
+        post_type=post_type,
+        formatting=post_template,
+        footer=footer,
+        message_url=message_link(subject='General Questions'),
+    )
+
+    post_comment(repliable=submission, body=reply)
+
+    return reply

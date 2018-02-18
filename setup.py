@@ -38,6 +38,7 @@ testing_deps = [
     'sh',
     'pytest',
     'pytest-cov',
+    'loremipsum',
 ]
 dev_helper_deps = [
     'better-exceptions',

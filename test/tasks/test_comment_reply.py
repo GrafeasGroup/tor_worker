@@ -1,6 +1,6 @@
 import pytest  # noqa
 
-from tor_worker.tasks.anyone import process_comment
+from tor_worker.tasks.moderator import process_comment
 
 from ..generators import RedditGenerator
 
@@ -30,10 +30,10 @@ class ProcessConductCommentTest(unittest.TestCase, RedditGenerator):
 
         self.comment = target
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
-    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
-    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.is_claimed_post_response')
+    @patch('tor_worker.tasks.moderator.is_code_of_conduct')
+    @patch('tor_worker.tasks.moderator.is_claimable_post')
     def test_agree(self, mock_claimable, mock_coc, mock_claimed_post,
                    mock_reddit):
         self.comment.body = 'I accept. I volunteer as tribute!'
@@ -48,10 +48,10 @@ class ProcessConductCommentTest(unittest.TestCase, RedditGenerator):
         mock_claimed_post.assert_not_called()
         mock_claimable.assert_not_called()
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
-    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
-    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.is_claimed_post_response')
+    @patch('tor_worker.tasks.moderator.is_code_of_conduct')
+    @patch('tor_worker.tasks.moderator.is_claimable_post')
     def test_disagree(self, mock_claimable, mock_coc, mock_claimed_post,
                       mock_reddit):
         self.comment.body = 'Nah, go screw yourself.'
@@ -88,8 +88,8 @@ class ProcessClaimableCommentTest(unittest.TestCase, RedditGenerator):
 
         self.comment = target
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.process_mod_intervention')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.process_mod_intervention')
     def test_other_bot_commented(self, mod_intervention, mock_reddit):
         self.comment.author.name = 'transcribot'
         mock_reddit.comment = MagicMock(name='comment',
@@ -102,7 +102,7 @@ class ProcessClaimableCommentTest(unittest.TestCase, RedditGenerator):
         mock_reddit.comment.assert_called_with('abcdef')
         mod_intervention.assert_not_called()
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
     def test_claim(self, mock_reddit):
         self.comment.body = 'I claim this land in the name of France!'
         mock_reddit.comment = MagicMock(name='comment',
@@ -113,8 +113,8 @@ class ProcessClaimableCommentTest(unittest.TestCase, RedditGenerator):
 
         mock_reddit.comment.assert_called_with('abcdef')
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.send_to_slack.delay')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.send_to_slack.delay')
     def test_refuse(self, mock_slack, mock_reddit):
         self.comment.body = 'Nah, screw it. I can do it later'
         mock_slack.return_value = None
@@ -127,8 +127,8 @@ class ProcessClaimableCommentTest(unittest.TestCase, RedditGenerator):
         mock_reddit.comment.assert_called_with('abcdef')
         mock_slack.assert_not_called()
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.send_to_slack.delay')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.send_to_slack.delay')
     def test_mod_intervention(self, mock_slack, mock_reddit):
         self.comment.body = 'Nah, fuck it. I can do it later'
         mock_slack.return_value = None
@@ -163,10 +163,10 @@ class ProcessDoneCommentTest(unittest.TestCase, RedditGenerator):
 
         self.comment = target
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
-    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
-    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.is_claimed_post_response')
+    @patch('tor_worker.tasks.moderator.is_code_of_conduct')
+    @patch('tor_worker.tasks.moderator.is_claimable_post')
     def test_misspelled_done(self, mock_claimable, mock_coc, mock_claimed_post,
                              mock_reddit):
         mock_coc.return_value = False
@@ -183,10 +183,10 @@ class ProcessDoneCommentTest(unittest.TestCase, RedditGenerator):
         mock_claimed_post.assert_called_once_with(self.comment.parent)
         mock_claimable.assert_not_called()
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
-    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
-    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.is_claimed_post_response')
+    @patch('tor_worker.tasks.moderator.is_code_of_conduct')
+    @patch('tor_worker.tasks.moderator.is_claimable_post')
     def test_done(self, mock_claimable, mock_coc, mock_claimed_post,
                   mock_reddit):
         mock_coc.return_value = False
@@ -201,10 +201,10 @@ class ProcessDoneCommentTest(unittest.TestCase, RedditGenerator):
         mock_claimed_post.assert_called_once_with(self.comment.parent)
         mock_claimable.assert_not_called()
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
-    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
-    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.is_claimed_post_response')
+    @patch('tor_worker.tasks.moderator.is_code_of_conduct')
+    @patch('tor_worker.tasks.moderator.is_claimable_post')
     def test_override_as_admin(self, mock_claimable, mock_coc,
                                mock_claimed_post, mock_reddit):
         mock_coc.return_value = False
@@ -222,10 +222,10 @@ class ProcessDoneCommentTest(unittest.TestCase, RedditGenerator):
         mock_claimed_post.assert_called_once_with(self.comment.parent)
         mock_claimable.assert_not_called()
 
-    @patch('tor_worker.tasks.anyone.process_comment.reddit')
-    @patch('tor_worker.tasks.anyone.is_claimed_post_response')
-    @patch('tor_worker.tasks.anyone.is_code_of_conduct')
-    @patch('tor_worker.tasks.anyone.is_claimable_post')
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.tasks.moderator.is_claimed_post_response')
+    @patch('tor_worker.tasks.moderator.is_code_of_conduct')
+    @patch('tor_worker.tasks.moderator.is_claimable_post')
     def test_override_as_anon(self, mock_claimable, mock_coc, mock_claimed_post,
                               mock_reddit):
         mock_coc.return_value = False

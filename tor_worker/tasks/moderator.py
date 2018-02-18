@@ -1,4 +1,10 @@
+from tor_worker import OUR_BOTS
 from tor_worker.config import Config
+from tor_worker.context import (
+    is_claimable_post,
+    is_claimed_post_response,
+    is_code_of_conduct,
+)
 from tor_worker.user_interaction import (
     format_bot_response as _,
     message_link,
@@ -6,18 +12,25 @@ from tor_worker.user_interaction import (
     post_comment,
 )
 from tor_worker.tasks.base import Task, InvalidUser
-from tor_worker.tasks.anyone import (
-    process_comment,
-    send_to_slack,
-)
+from tor_worker.tasks.anyone import send_to_slack
 
 from celery.utils.log import get_task_logger
 from celery import current_app as app
+from praw.models import Comment
 
+import re
 import textwrap
 
 
 log = get_task_logger(__name__)
+
+
+MOD_SUPPORT_PHRASES = [
+    re.compile('fuck', re.IGNORECASE),
+    re.compile('unclaim', re.IGNORECASE),
+    re.compile('undo', re.IGNORECASE),
+    re.compile('(?:good|bad) bot', re.IGNORECASE),
+]
 
 
 @app.task(bind=True, ignore_result=True, base=Task)
@@ -148,6 +161,80 @@ def send_bot_message(self, body, message_id=None, to=None,
         raise NotImplementedError(
             "Must give either a value for ``message_id`` or ``to``"
         )
+
+
+def process_mod_intervention(comment: Comment, reddit):
+    """
+    Triggers an alert in Slack with a link to the comment if there is something
+    offensive or in need of moderator intervention
+    """
+    phrases = []
+    for regex in MOD_SUPPORT_PHRASES:
+        matches = regex.search(comment.body)
+        if not matches:
+            continue
+
+        phrases.append(matches.group())
+
+    if len(phrases) == 0:
+        # Nothing offensive here, why did this function get triggered?
+        return
+
+    # Wrap each phrase in double-quotes (") and commas in between
+    phrases = '"' + '", "'.join(phrases) + '"'
+
+    title = 'Mod Intervention Needed'
+    message = f'Detected use of {phrases} <{comment.submission.shortlink}>'
+
+    # TODO: send message to slack
+    send_to_slack.delay(
+        f':rotating_light::rotating_light: {title} '
+        f':rotating_light::rotating_light:\n\n'
+        f'{message}',
+        '#general'
+    )
+
+
+@app.task(bind=True, ignore_result=True, base=Task)
+def process_comment(self, comment_id):
+    """
+    Processes a notification of comment being made, routing to other tasks as
+    is deemed necessary
+    """
+    reply = self.reddit.comment(comment_id)
+
+    if reply.author.name in OUR_BOTS:
+        return
+
+    body = reply.body.lower()
+    process_mod_intervention(reply, self.reddit)
+
+    if is_code_of_conduct(reply.parent):
+        if re.search(r'\bi accept\b', body):  # pragma: no coverage
+            # TODO: Fill out coc accept scenario and remove pragma directive
+            pass
+        else:  # pragma: no coverage
+            # TODO: Fill out error scenario and remove pragma directive
+            pass
+
+    elif is_claimed_post_response(reply.parent):
+        if re.search(r'\b(?:done|deno)\b', body):  # pragma: no coverage
+            # TODO: Fill out done scenario and remove pragma directive
+            pass
+        elif re.search(r'(?=<^|\W)!override\b', body):  # pragma: no coverage
+            # TODO: Fill out override scenario and remove pragma directive
+            pass
+        else:  # pragma: no coverage
+            # TODO: Fill out error scenario and remove pragma directive
+            pass
+
+    elif is_claimable_post(reply.parent):
+        if re.search(r'\bclaim\b', body):  # pragma: no coverage
+            # TODO: Fill out claim scenario and remove pragma directive
+            pass
+        else:  # pragma: no coverage
+            # TODO: Fill out error scenario and remove pragma directive
+            pass
 
 
 @app.task(bind=True, ignore_result=True, base=Task)

@@ -166,7 +166,7 @@ def send_bot_message(self, body, message_id=None, to=None,
         )
 
 
-def process_mod_intervention(comment: Comment, reddit):
+def process_mod_intervention(comment: Comment):
     """
     Triggers an alert in Slack with a link to the comment if there is something
     offensive or in need of moderator intervention
@@ -210,9 +210,11 @@ def process_comment(self, comment_id):
         return
 
     body = reply.body.lower()
-    process_mod_intervention(reply, self.reddit)
 
-    if is_code_of_conduct(reply.parent):
+    # This should just be a filter that doesn't stop further processing
+    process_mod_intervention(reply)
+
+    if is_code_of_conduct(reply.parent()):
         if re.search(r'\bi accept\b', body):  # pragma: no coverage
             # TODO: Fill out coc accept scenario and remove pragma directive
             pass
@@ -220,7 +222,7 @@ def process_comment(self, comment_id):
             # TODO: Fill out error scenario and remove pragma directive
             pass
 
-    elif is_claimed_post_response(reply.parent):
+    elif is_claimed_post_response(reply.parent()):
         if re.search(r'\b(?:done|deno)\b', body):  # pragma: no coverage
             # TODO: Fill out done scenario and remove pragma directive
             pass
@@ -231,7 +233,7 @@ def process_comment(self, comment_id):
             # TODO: Fill out error scenario and remove pragma directive
             pass
 
-    elif is_claimable_post(reply.parent):
+    elif is_claimable_post(reply.parent()):
         if re.search(r'\bclaim\b', body):  # pragma: no coverage
             # TODO: Fill out claim scenario and remove pragma directive
             pass

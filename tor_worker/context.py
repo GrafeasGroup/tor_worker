@@ -17,9 +17,7 @@ def is_code_of_conduct(comment: Comment):
 
 
 def is_claimed_post_response(comment: Comment):
-    if 'is yours' in comment.body.lower():
-        return True
-    if 'already claimed' in comment.body.lower():
+    if 'in progress' in comment.submission.link_flair_text.lower():
         return True
 
     return False
@@ -30,7 +28,7 @@ def is_claimable_post(comment: Comment):
     if is_code_of_conduct(comment):
         return False
 
-    if 'is still unclaimed' in comment.body.lower():
+    if 'unclaimed' in comment.submission.link_flair_text.lower():
         return True
 
     return False

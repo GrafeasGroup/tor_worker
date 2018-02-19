@@ -214,7 +214,10 @@ def generate_message(name='message', author=_missing, subject='', body=''):
     msg.kind = 't4'
     if author is _missing:
         author = generate_redditor().name
-    msg.author = generate_redditor(username=author)
+    if author is None:
+        msg.author = None
+    else:
+        msg.author = generate_redditor(username=author)
     msg.subject = subject
     msg.body = body
     msg.id = generate_reddit_id()

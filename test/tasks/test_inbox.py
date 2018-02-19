@@ -9,7 +9,7 @@ from ..generators import (
 )
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 
 class ProcessInboxMessagesTest(unittest.TestCase):
@@ -113,7 +113,7 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         mock_bot_message.assert_not_called()
         mock_process_comment.assert_not_called()
-        mock_slack.assert_called_once()
+        mock_slack.assert_called_once_with(ANY, '#general')
         mock_admin_cmd.assert_not_called()
 
         item.mark_read.assert_called_once()

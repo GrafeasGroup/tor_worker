@@ -209,14 +209,14 @@ def generate_redditor(name='user', username='me'):
     return redditor
 
 
-def generate_message(name='message', author=_missing):
+def generate_message(name='message', author=_missing, subject='', body=''):
     msg = MagicMock(name=name, spec=praw.models.Message)
     msg.kind = 't4'
     if author is _missing:
         author = generate_redditor().name
     msg.author = generate_redditor(username=author)
-    msg.subject = ''
-    msg.body = ''
+    msg.subject = subject
+    msg.body = body
     msg.id = generate_reddit_id()
 
     msg.mark_as_read = MagicMock(side_effect=None, return_value=None)

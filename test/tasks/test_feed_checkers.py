@@ -95,7 +95,6 @@ class FeedCheckerTest(unittest.TestCase):
             'tor_worker.tasks.moderator.post_to_tor')
         post_to_tor.apply_async.assert_called_once()
 
-    @pytest.mark.skip(reason='broken')
     @patch('tor_worker.tasks.anyone.signature')
     @patch('tor_worker.tasks.anyone.monitor_own_new_feed.http.get')
     def test_self_monitoring_feed(self, mock_http_get, mock_signature):
@@ -140,4 +139,4 @@ class FeedCheckerTest(unittest.TestCase):
 
         monitor_own_new_feed()
 
-        assert mock_update_post_flair.call_count == 2
+        assert mock_update_post_flair.apply_async.call_count == 2

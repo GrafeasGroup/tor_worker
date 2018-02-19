@@ -6,7 +6,6 @@ from tor_worker.tasks.moderator import (
 )
 
 from ..generators import (
-    RedditGenerator,
     generate_redditor,
     generate_comment,
     generate_submission,
@@ -16,7 +15,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 
-class ProcessConductCommentTest(unittest.TestCase, RedditGenerator):
+class ProcessConductCommentTest(unittest.TestCase):
     """
     Given that the parent comment is about the code of conduct...
     """
@@ -56,7 +55,7 @@ class ProcessConductCommentTest(unittest.TestCase, RedditGenerator):
         mock_reddit.comment.assert_called_with(self.comment.id)
 
 
-class ProcessClaimableCommentTest(unittest.TestCase, RedditGenerator):
+class ProcessClaimableCommentTest(unittest.TestCase):
     """
     Given that the parent comment indicates the post is unclaimed...
     """
@@ -117,7 +116,7 @@ class ProcessClaimableCommentTest(unittest.TestCase, RedditGenerator):
         mock_slack.assert_called_once()
 
 
-class ProcessDoneCommentTest(unittest.TestCase, RedditGenerator):
+class ProcessDoneCommentTest(unittest.TestCase):
     """
     Given that the parent comment indicates the post is unclaimed...
     """

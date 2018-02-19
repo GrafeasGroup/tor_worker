@@ -7,14 +7,18 @@ from tor_worker.user_interaction import (
 )
 from tor_worker import __version__
 
-from ..generators import RedditGenerator
+from ..generators import (
+    generate_comment,
+    generate_submission,
+    generate_subreddit,
+)
 
 import loremipsum
 import unittest
 from unittest.mock import patch, ANY
 
 
-class PostToTorTaskTest(unittest.TestCase, RedditGenerator):
+class PostToTorTaskTest(unittest.TestCase):
 
     @patch('tor_worker.tasks.moderator.update_post_flair.delay',
            side_effect=None)
@@ -25,9 +29,9 @@ class PostToTorTaskTest(unittest.TestCase, RedditGenerator):
     @patch('tor_worker.tasks.moderator.post_to_tor.redis')
     def test_new_post(self, mock_redis, mock_reddit, mock_config,
                       mock_post_comment, mock_update_flair):
-        comment = self.generate_comment()
-        post = self.generate_submission(reply=comment)
-        sub = self.generate_subreddit(submission=post)
+        comment = generate_comment()
+        post = generate_submission(reply=comment)
+        sub = generate_subreddit(submission=post)
         mock_reddit.subreddit.return_value = sub
         mock_config.templates.url_type.return_value = 'other'
         mock_config.subreddit.return_value = mock_config
@@ -55,8 +59,8 @@ class PostToTorTaskTest(unittest.TestCase, RedditGenerator):
         assert __version__ in comment.body.lower()
 
     def test_post_comment_pagination(self):
-        comment = self.generate_comment()
-        post = self.generate_submission(reply=comment)
+        comment = generate_comment()
+        post = generate_submission(reply=comment)
 
         # Tons of text that needs paginating
         body = '\n\n'.join(

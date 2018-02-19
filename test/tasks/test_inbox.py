@@ -3,7 +3,6 @@ import pytest  # noqa
 from tor_worker.tasks.moderator import check_inbox
 
 from ..generators import (
-    RedditGenerator,
     generate_comment,
     generate_message,
     generate_inbox,
@@ -13,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 
-class ProcessInboxMessagesTest(unittest.TestCase, RedditGenerator):
+class ProcessInboxMessagesTest(unittest.TestCase):
     """
     Tests the routing of certain inbox message types
     """
@@ -40,24 +39,22 @@ class ProcessInboxMessagesTest(unittest.TestCase, RedditGenerator):
 
         item.mark_read.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.send_bot_message.delay')
-    @patch('tor_worker.tasks.moderator.process_admin_command.delay')
-    @patch('tor_worker.tasks.moderator.send_to_slack.delay')
-    @patch('tor_worker.tasks.moderator.process_comment.delay')
+    @patch('tor_worker.tasks.moderator.send_bot_message.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.process_admin_command.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.send_to_slack.delay', side_effect=None)
+    @patch('tor_worker.tasks.moderator.process_comment.delay', side_effect=None)
     @patch('tor_worker.tasks.moderator.check_inbox.reddit')
     def test_mention(self, mock_reddit, mock_process_comment,
                      mock_slack, mock_admin_cmd, mock_bot_message):
-        item = self.generate_comment()
-        item.subject = 'username mention'
-        item.body = 'Just letting you know, /u/me, it\'s pretty cool.'
+        item = generate_comment(
+            subject='username mention',
+            body='Just letting you know, /u/me, it\'s pretty cool.',
+        )
 
-        mock_reddit.inbox = self.generate_inbox()
+        mock_reddit.inbox = generate_inbox()
         mock_reddit.inbox.unread.return_value = [item]
-
-        mock_bot_message.return_value = None
-        mock_process_comment.return_value = None
-        mock_slack.return_value = None
-        mock_admin_cmd.return_value = None
 
         check_inbox()
 

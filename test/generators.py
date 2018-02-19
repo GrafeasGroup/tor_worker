@@ -166,13 +166,13 @@ def generate_submission(name='post', author=_missing, reply=None,
 
 
 def generate_comment(name='comment', submission=None, reply=None, parent=None,
-                     author=_missing, body=''):
+                     author=_missing, body='', subject='comment reply'):
     comment = MagicMock(name=name, spec=praw.models.Comment)
     comment.kind = 't1'
     if author is _missing:
         author = generate_redditor().name
     comment.author = generate_redditor(username=author)
-    comment.subject = ''
+    comment.subject = subject
     if not submission:
         submission = generate_submission()
     comment.submission = submission
@@ -242,41 +242,3 @@ def generate_inbox(name='reddit.inbox', seed_data=False):
     box.unread = MagicMock(side_effect=None, return_value=msgs)
 
     return box
-
-
-class RedditGenerator(object):
-    """
-    A curry-able class for mixing in Reddit model generators
-    """
-
-    def generate_id(self):
-        return generate_reddit_id()
-
-    def generate_subreddit(self, *args, **kwargs):
-        return generate_subreddit(*args, **kwargs)
-
-    def generate_submission(self, *args, **kwargs):
-        return generate_submission(*args, **kwargs)
-
-    def generate_comment(self, *args, **kwargs):
-        return generate_comment(*args, **kwargs)
-
-    def generate_redditor(self, *args, **kwargs):
-        return generate_redditor(*args, **kwargs)
-
-    def generate_hail(self, name='hail', *args, **kwargs):
-        # Alias with some special settings
-        kwargs['name'] = name
-        return generate_comment(*args, **kwargs)
-
-    def generate_mod_message(self, name='mod_message', *args, **kwargs):
-        # Alias with some special settings
-        kwargs['name'] = name
-        kwargs['author'] = None
-        return generate_message(*args, **kwargs)
-
-    def generate_message(self, *args, **kwargs):
-        return generate_message(*args, **kwargs)
-
-    def generate_inbox(self, *args, **kwargs):
-        return generate_inbox(*args, **kwargs)

@@ -2,17 +2,19 @@ import pytest  # noqa
 
 from tor_worker.tasks.moderator import update_post_flair
 
-from ..generators import RedditGenerator
+from ..generators import (
+    generate_submission
+)
 
 import unittest
 from unittest.mock import patch, MagicMock
 
 
-class UpdatePostFlairTest(unittest.TestCase, RedditGenerator):
+class UpdatePostFlairTest(unittest.TestCase):
 
     @patch('tor_worker.tasks.moderator.update_post_flair.reddit')
     def test_available_flair(self, mock_reddit):
-        post = self.generate_submission()
+        post = generate_submission()
         mock_reddit.submission = MagicMock(return_value=post)
 
         update_post_flair(submission_id='abc123', flair='Unclaimed')
@@ -23,7 +25,7 @@ class UpdatePostFlairTest(unittest.TestCase, RedditGenerator):
 
     @patch('tor_worker.tasks.moderator.update_post_flair.reddit')
     def test_unavailable_flair(self, mock_reddit):
-        post = self.generate_submission()
+        post = generate_submission()
         mock_reddit.submission = MagicMock(return_value=post)
 
         with pytest.raises(NotImplementedError):

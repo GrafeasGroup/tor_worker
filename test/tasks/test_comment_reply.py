@@ -32,27 +32,47 @@ class ProcessConductCommentTest(unittest.TestCase):
 
         self.comment = target
 
+    @patch('tor_worker.tasks.moderator.claim_post.delay', side_effect=None)
+    @patch('tor_worker.tasks.moderator.accept_code_of_conduct.delay',
+           side_effect=None)
     @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    def test_agree(self, mock_reddit):
+    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+           side_effect=None)
+    def test_agree(self, mod_intervention, mock_reddit, mock_accept_coc,
+                   mock_claim):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
 
         self.comment.body = 'I accept the consequences'
         process_comment(self.comment.id)
-        # TODO: more to come when actual functionality is built-out
 
+        mock_accept_coc.assert_called_once_with(self.comment.author.name)
+        mock_claim.assert_called_once_with(self.comment.id, verify=False,
+                                           first_claim=True)
         mock_reddit.comment.assert_called_with(self.comment.id)
+        mod_intervention.assert_called_once()
 
+    @patch('tor_worker.tasks.moderator.claim_post.delay', side_effect=None)
+    @patch('tor_worker.tasks.moderator.accept_code_of_conduct.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.unhandled_comment.delay',
+           side_effect=None)
     @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    def test_disagree(self, mock_reddit):
+    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+           side_effect=None)
+    def test_disagree(self, mod_intervention, mock_reddit, mock_dunno,
+                      mock_accept_coc, mock_claim):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
 
         self.comment.body = 'Nah, go screw yourself.'
         process_comment(self.comment.id)
-        # TODO: more to come when actual functionality is built-out
 
+        mock_dunno.assert_called_once()
+        mock_accept_coc.assert_not_called()
+        mock_claim.assert_not_called()
         mock_reddit.comment.assert_called_with(self.comment.id)
+        mod_intervention.assert_called_once()
 
 
 class ProcessClaimableCommentTest(unittest.TestCase):
@@ -71,43 +91,59 @@ class ProcessClaimableCommentTest(unittest.TestCase):
 
         self.comment = target
 
+    @patch('tor_worker.tasks.moderator.unhandled_comment.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.claim_post.delay', side_effect=None)
     @patch('tor_worker.tasks.moderator.process_comment.reddit')
     @patch('tor_worker.tasks.moderator.process_mod_intervention',
            side_effect=None)
-    def test_other_bot_commented(self, mod_intervention, mock_reddit):
+    def test_other_bot_commented(self, mod_intervention, mock_reddit,
+                                 mock_claim, mock_dunno):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
 
         self.comment.author = generate_redditor(username='transcribot')
         process_comment(self.comment.id)
-        # TODO: more to come when actual functionality is built-out
 
+        mock_claim.assert_not_called()
         mock_reddit.comment.assert_called_with(self.comment.id)
         mod_intervention.assert_not_called()
 
+    @patch('tor_worker.tasks.moderator.unhandled_comment.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.claim_post.delay', side_effect=None)
     @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    def test_claim(self, mock_reddit):
+    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+           side_effect=None)
+    def test_claim(self, mod_intervention, mock_reddit, mock_claim, mock_dunno):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
 
         self.comment.body = 'I claim this land in the name of France!'
         process_comment(self.comment.id)
-        # TODO: more to come when actual functionality is built-out
 
+        mock_claim.assert_called_once_with(self.comment.id)
         mock_reddit.comment.assert_called_with(self.comment.id)
+        mod_intervention.assert_called_once()
 
+    @patch('tor_worker.tasks.moderator.unhandled_comment.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.claim_post.delay', side_effect=None)
     @patch('tor_worker.tasks.moderator.process_comment.reddit')
     @patch('tor_worker.tasks.moderator.process_mod_intervention',
            side_effect=None)
-    def test_refuse(self, mock_mod_intervention, mock_reddit):
+    def test_refuse(self, mod_intervention, mock_reddit, mock_claim,
+                    mock_dunno):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
 
         self.comment.body = 'Nah, screw it. I can do it later'
         process_comment(self.comment.id)
-        # TODO: more to come when actual functionality is built-out
 
+        mock_dunno.assert_called_once()
+        mock_claim.assert_not_called()
         mock_reddit.comment.assert_called_with(self.comment.id)
+        mod_intervention.assert_called_once()
 
     @patch('tor_worker.tasks.moderator.send_to_slack.delay', side_effect=None)
     def test_mod_intervention(self, mock_slack):
@@ -178,4 +214,18 @@ class ProcessDoneCommentTest(unittest.TestCase):
         process_comment(self.comment.id)
         # TODO: more to come when actual functionality is built-out
 
+        mock_reddit.comment.assert_any_call(self.comment.id)
+
+    @patch('tor_worker.tasks.moderator.unhandled_comment.delay',
+           side_effect=None)
+    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    def test_weird_response(self, mock_reddit, mock_dunno):
+        mock_reddit.comment = MagicMock(name='comment',
+                                        return_value=self.comment)
+
+        self.comment.body = "adsflkj232oiqqw123lk1209uasd;"
+        process_comment(self.comment.id)
+        # TODO: more to come when actual functionality is built-out
+
+        mock_dunno.assert_called_once()
         mock_reddit.comment.assert_any_call(self.comment.id)

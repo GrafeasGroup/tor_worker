@@ -12,7 +12,11 @@ from tor_worker.user_interaction import (
     post_comment,
 )
 from tor_worker.tasks.base import Task, InvalidUser
-from tor_worker.tasks.anyone import send_to_slack
+from tor_worker.tasks.anyone import (
+    send_to_slack,
+    accept_code_of_conduct,
+    unhandled_comment,
+)
 
 from celery.utils.log import get_task_logger
 from celery import current_app as app
@@ -215,12 +219,23 @@ def process_comment(self, comment_id):
     process_mod_intervention(reply)
 
     if is_code_of_conduct(reply.parent()):
-        if re.search(r'\bi accept\b', body):  # pragma: no coverage
-            # TODO: Fill out coc accept scenario and remove pragma directive
-            pass
-        else:  # pragma: no coverage
-            # TODO: Fill out error scenario and remove pragma directive
-            pass
+        if re.search(r'\bi accept\b', body):
+            accept_code_of_conduct.delay(reply.author.name)
+            claim_post.delay(reply.id, verify=False, first_claim=True)
+        else:
+            unhandled_comment.delay(
+                comment_id=reply.id,
+                body=reply.body
+            )
+
+    elif is_claimable_post(reply.parent()):
+        if re.search(r'\bclaim\b', body):
+            claim_post.delay(reply.id)
+        else:
+            unhandled_comment.delay(
+                comment_id=reply.id,
+                body=reply.body
+            )
 
     elif is_claimed_post_response(reply.parent()):
         if re.search(r'\b(?:done|deno)\b', body):  # pragma: no coverage
@@ -229,17 +244,33 @@ def process_comment(self, comment_id):
         elif re.search(r'(?=<^|\W)!override\b', body):  # pragma: no coverage
             # TODO: Fill out override scenario and remove pragma directive
             pass
-        else:  # pragma: no coverage
-            # TODO: Fill out error scenario and remove pragma directive
-            pass
+        else:
+            unhandled_comment.delay(
+                comment_id=reply.id,
+                body=reply.body
+            )
 
-    elif is_claimable_post(reply.parent()):
-        if re.search(r'\bclaim\b', body):  # pragma: no coverage
-            # TODO: Fill out claim scenario and remove pragma directive
-            pass
-        else:  # pragma: no coverage
-            # TODO: Fill out error scenario and remove pragma directive
-            pass
+
+@app.task(bind=True, ignore_result=True, base=Task)
+def claim_post(self, comment_id, verify=True, first_claim=False):
+    """
+    Macro for a few tasks:
+      - Update flair: ``Unclaimed`` -> ``In Progress``
+    """
+    comment = self.reddit.comment(comment_id)
+
+    if verify and not self.redis.sismember('accepted_CoC', comment.author.name):
+        log.warning(f'/u/{comment.author.name} just attempted to claim without '
+                    f'accepting the Code of Conduct. '
+                    f'https://redd.it/{comment.id}')
+        return
+
+    update_post_flair.delay(comment.submission.id, 'In Progress')
+    if first_claim:
+        # TODO: replace with more first-time friendly of a response
+        post_comment(repliable=comment, body=bot_msg['claim_success'])
+    else:
+        post_comment(repliable=comment, body=bot_msg['claim_success'])
 
 
 @app.task(bind=True, ignore_result=True, base=Task)

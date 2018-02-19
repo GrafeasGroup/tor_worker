@@ -120,6 +120,27 @@ def check_new_feed(self, subreddit):
 
 
 @app.task(bind=True, ignore_result=True, base=Task)
+def accept_code_of_conduct(self, username):
+    self.redis.sadd('accepted_CoC', username)
+
+    send_to_slack.delay(
+        f'<https://www.reddit.com/u/{username}|/u/{username}> has just '
+        f'accepted the CoC!',
+        '#general'
+    )
+
+
+@app.task(bind=True, ignore_result=True, base=Task)
+def unhandled_comment(self, comment_id, body):
+    send_to_slack(
+        f'**Unhandled comment reply** (https://redd.it/{comment_id})'
+        f'\n\n'
+        f'{body}',
+        '#general'
+    )
+
+
+@app.task(bind=True, ignore_result=True, base=Task)
 def test_system(self):  # pragma: no coverage
     import time
     import random

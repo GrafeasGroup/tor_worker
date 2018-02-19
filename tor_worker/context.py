@@ -32,3 +32,10 @@ def is_claimable_post(comment: Comment):
         return True
 
     return False
+
+
+def is_transcription(comment: Comment):
+    if "^^I'm&#32;a&#32;human&#32;volunteer&#32;" in comment.body.lower():
+        return True
+
+    return False

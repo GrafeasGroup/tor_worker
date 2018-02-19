@@ -1,3 +1,4 @@
+from tor_worker import OUR_BOTS
 from tor_worker.config import Config
 from tor_worker.tasks.base import Task
 
@@ -18,6 +19,38 @@ def send_to_slack(self, message, channel):
                         text=message)
 
 
+@app.task(bind=True, rate_limit='20/m', ignore_result=True, base=Task)
+def monitor_own_new_feed(self):
+    # Using `signature` here so we don't have a recursive import loop
+    update_post_flair = signature(
+        'tor_worker.tasks.moderator.update_post_flair'
+    )
+    subreddit_name = 'TranscribersOfReddit'
+    # config = Config.subreddit(subreddit_name)
+
+    r = self.http.get(f'https://www.reddit.com/r/{subreddit_name}/new.json')
+    r.raise_for_status()
+    feed = r.json()
+
+    if feed['kind'].lower() != 'listing':  # pragma: no coverage
+        raise 'Invalid payload for listing'
+
+    for feed_item in feed['data']['children']:
+        if feed_item['kind'].lower() != 't3':  # pragma: no coverage
+            log.warning(f'Unsupported kind in /new feed with {repr(feed_item)}')
+            continue
+
+        if feed_item['data']['author'] not in OUR_BOTS and \
+                not feed_item['data']['link_flair_text']:
+            # If any other user posts (besides our bots), apply a "META" flair
+            update_post_flair.apply_async(kwargs={
+                'submission_id': feed_item['data']['id'],
+                'flair': 'META',
+            })
+
+        # TODO: Any other maintenance tasks on our own posts?
+
+
 @app.task(bind=True, ignore_result=True, base=Task)
 def check_new_feeds(self):  # pragma: no coverage
     config = Config()
@@ -26,7 +59,7 @@ def check_new_feeds(self):  # pragma: no coverage
         check_new_feed.delay(sub)
 
 
-@app.task(bind=True, rate_limit='50/m', base=Task)
+@app.task(bind=True, rate_limit='50/m', ignore_result=True, base=Task)
 def check_new_feed(self, subreddit):
     # Using `signature` here so we don't have a recursive import loop
     post_to_tor = signature('tor_worker.tasks.moderator.post_to_tor')
@@ -43,27 +76,34 @@ def check_new_feed(self, subreddit):
     cross_posts = 0
 
     for feed_item in feed['data']['children']:
+        log.debug(f'Processing post {repr(feed_item["data"]["title"])}')
         if feed_item['kind'].lower() != 't3':  # pragma: no coverage
             # Only allow t3 (submission) types
             log.warning(f'Unsupported kind in /new feed with {repr(feed_item)}')
             continue
         if feed_item['data']['is_self']:
             # Self-posts don't need to be transcribed. Duh!
+            log.debug('Does not support self-posts')
             continue
         if feed_item['data']['locked'] or feed_item['data']['archived']:
             # No way to comment with a transcription if post is read-only
+            log.debug('Does not support locked or archived posts')
             continue
         if feed_item['data']['author'] is None:
             # Author gone means deleted, and we don't want to cross-post then
+            log.debug('Does not support deleted posts')
             continue
         if self.redis.sismember('post_ids', feed_item['data']['id']):
             # Post is already processed, but may not be completed
+            log.debug('Skips already submitted posts')
             continue
         if not config.filters.score_allowed(feed_item['data']['score']):
             # Must meet subreddit-specific settings on score threshold
+            log.debug('Skips low scoring posts')
             continue
         if not config.filters.url_allowed(feed_item['data']['domain']):
             # Must be on one of the whitelisted domains (if any given)
+            log.debug('Skips posts for a domain that isn\'t whitelisted')
             continue
 
         post_to_tor.apply_async(

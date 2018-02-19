@@ -125,6 +125,9 @@ def update_post_flair(self, submission_id, flair):
 
     for choice in post.flair.choices():
         if choice['flair_text'].lower() == flair.lower():
+            # NOTE: This is hacky if we have multiple styles for the same flair.
+            #   That said, we shouldn't rely on visual style if we're being
+            #   truly accessible...
             post.flair.select(
                 flair_template_id=choice['flair_template_id']
             )

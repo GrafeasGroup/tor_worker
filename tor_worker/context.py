@@ -9,6 +9,10 @@ This helps reduce the amount of data we _have_ to store in Redis.
 """
 
 
+class InvalidState(Exception):
+    pass
+
+
 def is_code_of_conduct(comment: Comment):
     if 'code of conduct' in comment.body.lower():
         return True
@@ -23,9 +27,9 @@ def is_claimed_post_response(comment: Comment):
     return False
 
 
-def is_claimable_post(comment: Comment):
+def is_claimable_post(comment: Comment, override=False):
     # Need to accept the CoC before claiming
-    if is_code_of_conduct(comment):
+    if not override and is_code_of_conduct(comment):
         return False
 
     if 'unclaimed' in comment.submission.link_flair_text.lower():

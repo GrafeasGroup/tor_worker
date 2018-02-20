@@ -1,6 +1,7 @@
 from tor_worker import OUR_BOTS
 from tor_worker.config import Config
 from tor_worker.context import (
+    InvalidState,
     is_claimable_post,
     is_claimed_post_response,
     is_code_of_conduct,
@@ -239,7 +240,8 @@ def process_comment(self, comment_id):
 
     elif is_claimed_post_response(reply.parent()):
         if re.search(r'\b(?:done|deno)\b', body):  # pragma: no coverage
-            # TODO: Fill out done scenario and remove pragma directive
+            # TODO
+            # mark_post_complete.delay(reply.id)
             pass
         elif re.search(r'(?=<^|\W)!override\b', body):  # pragma: no coverage
             # TODO: Fill out override scenario and remove pragma directive
@@ -254,16 +256,19 @@ def process_comment(self, comment_id):
 @app.task(bind=True, ignore_result=True, base=Task)
 def claim_post(self, comment_id, verify=True, first_claim=False):
     """
-    Macro for a few tasks:
+    Macro for a couple tasks:
       - Update flair: ``Unclaimed`` -> ``In Progress``
+      - Post response: ``Hey, you have the post!``
     """
     comment = self.reddit.comment(comment_id)
 
     if verify and not self.redis.sismember('accepted_CoC', comment.author.name):
-        log.warning(f'/u/{comment.author.name} just attempted to claim without '
-                    f'accepting the Code of Conduct. '
-                    f'https://redd.it/{comment.id}')
-        return
+        raise InvalidState(f'Unable to claim a post without first accepting '
+                           f'the code of conduct')
+
+    if not is_claimable_post(comment.parent(), override=True):
+        raise InvalidState(f'Unable to claim a post that is not claimable. '
+                           f'https://redd.it/{comment.id}')
 
     update_post_flair.delay(comment.submission.id, 'In Progress')
     if first_claim:
@@ -304,5 +309,3 @@ def post_to_tor(self, sub, title, link, domain):
     )
 
     post_comment(repliable=submission, body=reply)
-
-    return reply

@@ -3,11 +3,11 @@ import os
 import celery
 
 import praw
-import requests
 import redis
 from slackclient import SlackClient
 
 from tor_worker import __version__, cached_property
+from tor_worker.http import Http
 
 
 class InvalidUser(Exception):
@@ -32,12 +32,7 @@ class Task(celery.Task):
 
     @cached_property
     def http(self):  # pragma: no cover
-        http = requests.Session()
-        http.headers.update({
-            'User-Agent': f'python:org.grafeas.tor_worker:v{__version__} '
-                          '(by the mods of /r/TranscribersOfReddit)',
-        })
-        return http
+        return Http()
 
     @cached_property
     def slack(self):  # pragma: no cover

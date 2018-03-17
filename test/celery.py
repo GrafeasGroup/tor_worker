@@ -20,9 +20,18 @@ def reset_signatures():
     t_lock.signature_mocks.clear()
 
 
-def is_valid_import_path(*args, **kwargs):
+def assert_valid_import_path(pypath):
+    parts = pypath.split('.')
+    task = parts.pop()
+    parent = '.'.join(parts)
+
     # @see https://stackoverflow.com/a/14050282
-    return importlib.util.find_spec(*args, **kwargs) is not None
+    spec = importlib.util.find_spec(parent)
+    assert spec is not None, \
+        f'Module {parent} does not resolve to a valid module'
+
+    mod = importlib.import_module(parent)
+    assert hasattr(mod, task), f'Module {parent} does not have a {task} task'
 
 
 def signature(pypath, *args, **kwargs):
@@ -33,8 +42,7 @@ def signature(pypath, *args, **kwargs):
         out = t_lock.signature_mocks[key]
     except KeyError:
         # Only run this as we're creating new mocks
-        # if not is_valid_import_path(pypath):
-        #     raise NotImplementedError(f'{pypath} is not a registered task')
+        assert_valid_import_path(pypath)
 
         out = MagicMock(name=pypath, spec=celery.Signature)
         t_lock.signature_mocks[key] = out

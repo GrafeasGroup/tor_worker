@@ -1,6 +1,7 @@
 import json
 import os
 import random
+from typing import List, Dict, Any
 
 
 from tor_worker import cached_property
@@ -69,31 +70,6 @@ class DeserializerBase(object):
             return 'Default configuration'
         else:
             return f'/r/{self.name} configuration'
-
-    # These should not change on a per-subreddit basis
-    _protected_attributes = []
-
-    @classmethod
-    def subreddit(cls, name: str) -> 'Config':
-        """
-        A factory method for overlaying subreddit-specific configurations onto
-        the default ones.
-
-        :param name: the target subreddit (case-sensitive)
-        :return: subreddit-specific configurations flattened
-        """
-        defaults = helpers.load_json(os.path.join(cls._base, 'bots',
-                                                  'settings.json'))
-        subreddit = helpers.load_json(os.path.join(cls._base, 'bots',
-                                                   'subreddits.json'))
-        # non-mutating way of combining these 2 dicts
-        data = {**defaults,
-                **subreddit.get(name, {})}
-        # Revert protected attributes to global defaults
-        for attr in cls._protected_attributes:
-            data[attr] = defaults[attr]
-
-        return cls(_settings=data, _name=name)
 
 
 class Templates(DeserializerBase):
@@ -177,6 +153,103 @@ class PostConstraintSet(object):
         return score >= self._settings.get('upvote_filter', 0)
 
 
+class CommandPermission(object):
+    """
+    A chainable object for checking if allowed to run an admin command.
+
+        >>> command = CommandSet()
+        >>> if command.allows('blacklist').by_user('me'):
+        ...     print('I am allowed')
+        I am allowed
+        >>> if command.allows('blacklist').by_user('spez'):
+        ...     print('Spez is allowed')
+        >>>
+    """
+
+    def __init__(self, name, _value=False, _settings={}, _finished=False):
+        self.name = name.lower()
+        self._settings = _settings
+        self._value = _value
+        self._finished = _finished
+
+    # This allows chaining itself while being able to stop
+    # at any time and check if the permission is allowed
+    def __bool__(self):
+        return self._value and self._finished
+
+    def by_user(self, username) -> 'CommandPermission':
+        config = Config.subreddit('TranscribersOfReddit')
+        cmd = self._settings
+
+        if not cmd:
+            return self._chain(False)
+        elif config.globals.is_moderator(username):
+            return self._chain(True)
+        elif username in cmd.get('allowedNames', []):
+            return self._chain(True)
+        else:
+            return self._chain(False)
+
+    def _chain(self, is_allowed):
+        return CommandPermission(name=self.name,
+                                 _finished=True,
+                                 _value=is_allowed,
+                                 _settings=self._settings)
+
+
+class CommandSet(object):
+    """
+    A config object for asking questions of `commands.json` for admin command
+    configuration.
+    """
+
+    # TODO: fill this out with other questions we might ask of the admin
+    # commands settings
+
+    def __init__(self, settings):
+        self._settings = settings
+
+    def allows(self, command_name) -> CommandPermission:
+        """
+        Starts a chain for permissions
+        """
+        return CommandPermission(name=command_name,
+                                 _settings=self._commands.get(command_name, {}))
+
+    @property
+    def no(self) -> str:
+        """
+        Random "no" or "rejected" response
+        """
+        return random.choice(self._settings.get('notAuthorizedResponses', []))
+
+    @property
+    def _commands(self) -> Dict[str, Any]:
+        return self._settings.get('commands', {})
+
+
+class GlobalSettings(object):
+    def __init__(self, _settings={}):
+        self._settings = _settings
+
+    @cached_property
+    def environment(self) -> str:
+        """
+        The current operating environment, used as a basis for
+        environment-specific safeguards. Possible options are:
+            - 'development'
+            - 'testing'
+            - 'production'
+        """
+        return self._settings.get('environment', 'development')
+
+    def is_moderator(self, username) -> bool:
+        """
+        Tests if the given username is a moderator of /r/ToR
+        """
+        return username in self._settings.get('moderators', [])
+
+
 class Config(DeserializerBase):
     """
     Deserializer base for configuration file contents
@@ -192,22 +265,43 @@ class Config(DeserializerBase):
         >>> config.env
         'development'
     """
-    _protected_attributes = ['environment']
+    # These should not change on a per-subreddit basis
+    _protected_attributes = []
+
+    @classmethod
+    def subreddit(cls, name: str) -> 'Config':
+        """
+        A factory method for overlaying subreddit-specific configurations onto
+        the default ones.
+
+        :param name: the target subreddit (case-sensitive)
+        :return: subreddit-specific configurations flattened
+        """
+        defaults = helpers.load_json(os.path.join(cls._base, 'bots',
+                                                  'settings.json'))
+        subreddit = helpers.load_json(os.path.join(cls._base, 'bots',
+                                                   'subreddits.json'))
+        # non-mutating way of combining these 2 dicts
+        data = {**defaults,
+                **subreddit.get(name, {})}
+        # Revert protected attributes to global defaults
+        for attr in cls._protected_attributes:
+            data[attr] = defaults[attr]
+
+        return cls(_settings=data, _name=name)
 
     @cached_property
     def templates(self) -> Templates:
         return Templates(self._base, _settings=self._default)
 
+    @cached_property
+    def commands(self) -> CommandSet:
+        settings = helpers.load_json(os.path.join(self._base, 'commands.json'))
+        return CommandSet(settings=settings)
+
     @property
     def env(self) -> str:
-        """
-        The current operating environment, used as a basis for
-        environment-specific safeguards. Possible options are:
-            - 'development'
-            - 'testing'
-            - 'production'
-        """
-        return self._settings.get('environment', 'development')
+        return self.globals.environment
 
     @property
     def gifs(self) -> RandomizedData:
@@ -231,11 +325,17 @@ class Config(DeserializerBase):
         return out
 
     @cached_property
-    def filters(self):
+    def globals(self) -> GlobalSettings:
+        path = os.path.join(self._base, 'globals.json')
+        data = helpers.load_json(path)
+        return GlobalSettings(_settings=data)
+
+    @cached_property
+    def filters(self) -> PostConstraintSet:
         return PostConstraintSet(_settings=self._settings)
 
     @property
-    def subreddits(self):
+    def subreddits(self) -> List[str]:
         path = os.path.join(self._base, 'bots', 'subreddits.json')
         data = helpers.load_json(path)
         return data.keys()

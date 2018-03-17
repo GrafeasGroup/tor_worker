@@ -20,6 +20,12 @@ def dummy_json_loader(path):
             'me_irl': {},
             'ProgrammingHumor': {},
         }
+    elif path.endswith('globals.json'):
+        return {
+            'environment': 'testing',
+            'moderators': [
+            ],
+        }
     else:
         raise NotImplementedError(path)
 

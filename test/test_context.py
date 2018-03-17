@@ -9,8 +9,10 @@ from tor_worker.context import (
     is_code_of_conduct,
     is_claimed_post_response,
     is_claimable_post,
+    has_youtube_captions,
 )
 
+import os
 import unittest
 
 
@@ -142,3 +144,24 @@ class IsClaimedTest(unittest.TestCase):
         self.comment.body = 'This post has already been completed! Perhaps ' \
             'you can find a new one on the front page?'
         assert not is_claimed_post_response(self.comment)
+
+
+@pytest.mark.skipif(not os.getenv('EXTERNAL_ACCESS'),
+                    reason='Skipping tests that require access to YouTube')
+class IsYoutubeCaptionTest(unittest.TestCase):
+    def test_video_with_caption(self):
+        link = 'https://www.youtube.com/watch?v=RnaEqiVnad0'
+
+        assert has_youtube_captions(link)
+
+    def test_video_without_caption(self):
+        link = 'https://www.youtube.com/watch?v=AnqN-uN3_wc'
+        assert not has_youtube_captions(link)
+
+    def test_other_video_provider(self):
+        link = 'https://vimeo.com/259878665'
+        assert not has_youtube_captions(link)
+
+    def test_non_video(self):
+        link = 'https://via.placeholder.com/1x1.png'
+        assert not has_youtube_captions(link)

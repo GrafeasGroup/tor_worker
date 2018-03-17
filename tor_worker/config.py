@@ -1,7 +1,8 @@
 import json
+import importlib
 import os
 import random
-from typing import List, Dict, Any
+from typing import List, Dict, Callable, Any
 
 
 from tor_worker import cached_property
@@ -208,6 +209,7 @@ class CommandSet(object):
 
     def __init__(self, settings):
         self._settings = settings
+        self._func_base = f'{__package__}.admin_commands'
 
     def allows(self, command_name) -> CommandPermission:
         """
@@ -215,6 +217,20 @@ class CommandSet(object):
         """
         return CommandPermission(name=command_name,
                                  _settings=self._commands.get(command_name, {}))
+
+    def func(self, command_name) -> Callable[[str, str, str], Any]:
+        func_name = self._commands.get(command_name, {})\
+            .get('pythonFunction', 'undefined_operation')
+
+        module = importlib.import_module(self._func_base)
+
+        # Because we want to allow static methods on classes...
+        segments = func_name.split('.')
+        func = module
+        while len(segments) > 0:
+            func = getattr(func, segments.pop(0))
+
+        return func
 
     @property
     def no(self) -> str:

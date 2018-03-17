@@ -10,6 +10,28 @@ def noop(author, body, message_id):
     pass
 
 
+class noop_commands(object):
+    @staticmethod
+    def blacklist(author, body, message_id):
+        return 'blacklist'
+
+    @staticmethod
+    def ping(author, body, message_id):
+        return 'ping'
+
+    @staticmethod
+    def reload(author, body, message_id):
+        return 'reload'
+
+    @staticmethod
+    def somerandomcommand(author, body, message_id):
+        return 'somerandomcommand'
+
+    @staticmethod
+    def update(author, body, message_id):
+        return 'update'
+
+
 def dummy_json_loader(path):
     if path.endswith('settings.json'):
         return {
@@ -45,22 +67,22 @@ class CommandSetTest(unittest.TestCase):
                 'blacklist': {
                     'description': '',
                     'allowedNames': [],
-                    'pythonFunction': 'noop',
+                    'pythonFunction': 'noop_commands.blacklist',
                 },
                 'ping': {
                     'description': '',
                     'allowedNames': ['me'],
-                    'pythonFunction': 'noop',
+                    'pythonFunction': 'noop_commands.ping',
                 },
                 'reload': {
                     'description': '',
                     'allowedNames': [],
-                    'pythonFunction': 'noop',
+                    'pythonFunction': 'noop_commands.reload',
                 },
                 'update': {
                     'description': '',
                     # No `allowedNames` key.
-                    'pythonFunction': 'noop',
+                    'pythonFunction': 'noop_commands.update',
                 },
             }
         })
@@ -79,11 +101,19 @@ class CommandSetTest(unittest.TestCase):
         assert not self.command.allows('somerandomcommand').by_user('tor_mod'),\
             'User "tor_mod" is allowed to use the command "somerandomcommand"'
 
+        assert self.command.func('somerandomcommand') != \
+            noop_commands.somerandomcommand
+
+        with pytest.raises(NotImplementedError):  # Test undefined behavior
+            # Test method arity
+            self.command.func('somerandomcommand')('', '', '')
+
     @patch('tor_worker.config.helpers.assert_valid_directory',
            side_effect=None)
     @patch('tor_worker.config.helpers.load_json',
            side_effect=dummy_json_loader)
     def test_not_authorized(self, mock_json, mock_valid_dir):
+        self.command._func_base = __name__
         config = Config()
         assert not config.globals.is_moderator('me')
         assert config.globals.is_moderator('tor_mod')
@@ -93,11 +123,15 @@ class CommandSetTest(unittest.TestCase):
         assert self.command.allows('reload').by_user('tor_mod'),\
             'User "tor_mod" is not allowed to use the command "reload"'
 
+        assert self.command.func('reload') == noop_commands.reload
+        self.command.func('reload')('', '', '')  # Test method arity
+
     @patch('tor_worker.config.helpers.assert_valid_directory',
            side_effect=None)
     @patch('tor_worker.config.helpers.load_json',
            side_effect=dummy_json_loader)
     def test_no_users_defined(self, mock_json, mock_valid_dir):
+        self.command._func_base = __name__
         config = Config()
         assert config.globals.is_moderator('tor_mod')
         assert not config.globals.is_moderator('me')
@@ -107,11 +141,15 @@ class CommandSetTest(unittest.TestCase):
         assert self.command.allows('update').by_user('tor_mod'),\
             'User "tor_mod" is not allowed to use the command "update"'
 
+        assert self.command.func('update') == noop_commands.update
+        self.command.func('update')('', '', '')  # Test method arity
+
     @patch('tor_worker.config.helpers.assert_valid_directory',
            side_effect=None)
     @patch('tor_worker.config.helpers.load_json',
            side_effect=dummy_json_loader)
     def test_user_is_allowed(self, mock_json, mock_valid_dir):
+        self.command._func_base = __name__
         config = Config()
         assert config.globals.is_moderator('tor_mod')
         assert not config.globals.is_moderator('me')
@@ -120,3 +158,6 @@ class CommandSetTest(unittest.TestCase):
             'User "me" is not allowed to use the command "update"'
         assert self.command.allows('ping').by_user('tor_mod'),\
             'User "tor_mod" is not allowed to use the command "update"'
+
+        assert self.command.func('ping') == noop_commands.ping
+        self.command.func('ping')('', '', '')  # Test method arity

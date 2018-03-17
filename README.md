@@ -9,7 +9,7 @@ It is currently in pre-alpha and is only made publicly available for feedback fr
 ```bash
 $ git clone git@github.com:GrafeasGroup/tor_worker.git tor_worker
 $ cd tor_worker
-$ pip install -e .
+$ pip install --process-dependency-links -e .
 ```
 
 ## Use

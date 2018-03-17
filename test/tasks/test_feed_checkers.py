@@ -8,6 +8,13 @@ from tor_worker.tasks.anyone import (
 import unittest
 from unittest.mock import patch, MagicMock
 
+from ..celery import (
+    signature,
+    reset_signatures,
+    # assert_no_tasks_called,
+    assert_only_tasks_called,
+)
+
 from ..generators import (
     generate_reddit_id,
     generate_post_feed_item,
@@ -23,17 +30,18 @@ def noop_callable(*args, **kwargs):
 
 class FeedCheckerTest(unittest.TestCase):
 
+    def setUp(self):
+        reset_signatures()
+
     def submission(self, *args, **kwargs):
         return generate_post_feed_item(*args, **kwargs)
 
     @patch('tor_worker.tasks.anyone.Config')
-    @patch('tor_worker.tasks.anyone.signature')
+    @patch('tor_worker.tasks.anyone.signature', side_effect=signature)
     @patch('tor_worker.tasks.anyone.check_new_feed.http.get')
     @patch('tor_worker.tasks.anyone.check_new_feed.redis', side_effect=None)
     def test_feed_reader(self, mock_redis, mock_http_get, mock_signature,
                          mock_config):
-        post_to_tor = MagicMock(name='task_signature')
-        mock_signature.return_value = post_to_tor
         mock_config.subreddit = MagicMock(name='Config.subreddit',
                                           return_value=mock_config)
         mock_response = MagicMock(name='http_response')
@@ -91,28 +99,16 @@ class FeedCheckerTest(unittest.TestCase):
 
         check_new_feed(subreddit)
 
-        mock_signature.assert_called_once_with(
-            'tor_worker.tasks.moderator.post_to_tor')
-        post_to_tor.apply_async.assert_called_once()
+        signature('tor_worker.tasks.moderator.post_to_tor').delay \
+            .assert_called_once()
 
-    @patch('tor_worker.tasks.anyone.signature')
+        assert_only_tasks_called(
+            'tor_worker.tasks.moderator.post_to_tor',
+        )
+
+    @patch('tor_worker.tasks.anyone.signature', side_effect=signature)
     @patch('tor_worker.tasks.anyone.monitor_own_new_feed.http.get')
     def test_self_monitoring_feed(self, mock_http_get, mock_signature):
-        mock_update_post_flair = MagicMock(name='update_post_flair')
-
-        def sig(name, *args, **kwargs):
-            item = None
-            if name == 'tor_worker.tasks.moderator.update_post_flair':
-                item = mock_update_post_flair
-
-            if not item:
-                raise NotImplementedError()
-
-            item.apply_async.side_effect = None
-
-            return item
-
-        mock_signature.side_effect = sig
         mock_response = MagicMock(name='http_response')
         mock_http_get.return_value = mock_response
 
@@ -139,4 +135,9 @@ class FeedCheckerTest(unittest.TestCase):
 
         monitor_own_new_feed()
 
-        assert mock_update_post_flair.apply_async.call_count == 2
+        assert signature('tor_worker.tasks.moderator.update_post_flair').delay \
+            .call_count == 2
+
+        assert_only_tasks_called(
+            'tor_worker.tasks.moderator.update_post_flair',
+        )

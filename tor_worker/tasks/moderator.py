@@ -200,7 +200,6 @@ def process_mod_intervention(comment: Comment):
     title = 'Mod Intervention Needed'
     message = f'Detected use of {phrases} <{comment.submission.shortlink}>'
 
-    # TODO: send message to slack
     send_to_slack.delay(
         f':rotating_light::rotating_light: {title} '
         f':rotating_light::rotating_light:\n\n'
@@ -215,9 +214,8 @@ def process_comment(self, comment_id):
     Processes a notification of comment being made, routing to other tasks as
     is deemed necessary
     """
-    accept_code_of_conduct = signature(
-        'tor_worker.tasks.anyone.accept_code_of_conduct'
-    )
+    accept_code_of_conduct = signature('tor_worker.tasks.anyone.'
+                                       'accept_code_of_conduct')
     unhandled_comment = signature('tor_worker.tasks.anyone.unhandled_comment')
     claim_post = signature('tor_worker.tasks.moderator.claim_post')
 
@@ -252,7 +250,7 @@ def process_comment(self, comment_id):
 
     elif is_claimed_post_response(reply.parent()):
         if re.search(r'\b(?:done|deno)\b', body):  # pragma: no coverage
-            # TODO
+            # TODO: Fill out completed post scenario and remove pragma directive
             # mark_post_complete.delay(reply.id)
             pass
         elif re.search(r'(?=<^|\W)!override\b', body):  # pragma: no coverage
@@ -272,6 +270,9 @@ def claim_post(self, comment_id, verify=True, first_claim=False):
       - Update flair: ``Unclaimed`` -> ``In Progress``
       - Post response: ``Hey, you have the post!``
     """
+    update_post_flair = signature('tor_worker.tasks.moderator.'
+                                  'update_post_flair')
+
     comment = self.reddit.comment(comment_id)
 
     if verify and not self.redis.sismember('accepted_CoC', comment.author.name):
@@ -292,6 +293,9 @@ def claim_post(self, comment_id, verify=True, first_claim=False):
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def post_to_tor(self, sub, title, link, domain):
+    update_post_flair = signature('tor_worker.tasks.moderator.'
+                                  'update_post_flair')
+
     config = Config.subreddit(sub)
     title = textwrap.shorten(title, width=250, placeholder='...')
 
@@ -312,6 +316,7 @@ def post_to_tor(self, sub, title, link, domain):
     self.redis.incr('total_new', amount=1)
 
     # TODO: OCR job for this comment
+    # TODO: YouTube transcription attempt
 
     reply = bot_msg['intro_comment'].format(
         post_type=post_type,
@@ -319,5 +324,4 @@ def post_to_tor(self, sub, title, link, domain):
         footer=footer,
         message_url=message_link(subject='General Questions'),
     )
-
     post_comment(repliable=submission, body=reply)

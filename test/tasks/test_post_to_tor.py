@@ -7,6 +7,12 @@ from tor_worker.user_interaction import (
 )
 from tor_worker import __version__
 
+from ..celery import (
+    signature,
+    reset_signatures,
+    # assert_no_tasks_called,
+    assert_only_tasks_called,
+)
 from ..generators import (
     generate_comment,
     generate_submission,
@@ -20,15 +26,16 @@ from unittest.mock import patch, ANY
 
 class PostToTorTaskTest(unittest.TestCase):
 
-    @patch('tor_worker.tasks.moderator.update_post_flair.delay',
-           side_effect=None)
-    @patch('tor_worker.tasks.moderator.post_comment',
-           side_effect=None)
+    def setUp(self):
+        reset_signatures()
+
+    @patch('tor_worker.tasks.moderator.post_comment')
+    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
     @patch('tor_worker.tasks.moderator.Config')
     @patch('tor_worker.tasks.moderator.post_to_tor.reddit')
     @patch('tor_worker.tasks.moderator.post_to_tor.redis')
     def test_new_post(self, mock_redis, mock_reddit, mock_config,
-                      mock_post_comment, mock_update_flair):
+                      mock_signature, mock_post_comment):
         comment = generate_comment()
         post = generate_submission(reply=comment)
         sub = generate_subreddit(submission=post)
@@ -53,7 +60,12 @@ class PostToTorTaskTest(unittest.TestCase):
 
         sub.submit.assert_called_once()
         mock_post_comment.assert_called_once()
-        mock_update_flair.assert_called_once()
+        signature('tor_worker.tasks.moderator.update_post_flair').delay \
+            .assert_called_once()
+
+        assert_only_tasks_called(
+            'tor_worker.tasks.moderator.update_post_flair',
+        )
 
         assert f'subreddit | Other | "title goes here"' == post.title
         assert __version__ in comment.body.lower()

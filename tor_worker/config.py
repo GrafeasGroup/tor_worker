@@ -203,13 +203,11 @@ class CommandSet(object):
     A config object for asking questions of `commands.json` for admin command
     configuration.
     """
-
-    # TODO: fill this out with other questions we might ask of the admin
-    # commands settings
+    _func_base = f'{__package__}.admin_commands'
+    # Other questions we might ask of the admin commands settings?
 
     def __init__(self, settings):
         self._settings = settings
-        self._func_base = f'{__package__}.admin_commands'
 
     def allows(self, command_name) -> CommandPermission:
         """
@@ -218,7 +216,11 @@ class CommandSet(object):
         return CommandPermission(name=command_name,
                                  _settings=self._commands.get(command_name, {}))
 
-    def func(self, command_name) -> Callable[[str, str, str], Any]:
+    def func(self, command_name) -> Callable[[str, str, Any], str]:
+        """
+        Returns a callable assigned to the given admin command. Callable takes 3
+        arguments (author, arg, svc) and returns a message to be sent in reply.
+        """
         func_name = self._commands.get(command_name, {})\
             .get('pythonFunction', 'undefined_operation')
 

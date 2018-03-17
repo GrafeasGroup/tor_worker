@@ -107,6 +107,8 @@ def check_new_feed(self, subreddit):
         post_to_tor.delay(sub=feed_item['data']['subreddit'],
                           title=feed_item['data']['title'],
                           link=feed_item['data']['permalink'],
+                          media_link=feed_item['data']['url'],
+                          post_id=feed_item['data']['id'],
                           domain=feed_item['data']['domain'])
         cross_posts += 1
 

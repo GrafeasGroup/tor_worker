@@ -5,6 +5,7 @@ from tor_worker.context import (
     is_claimable_post,
     is_claimed_post_response,
     is_code_of_conduct,
+    has_youtube_captions,
 )
 from tor_worker.user_interaction import (
     format_bot_response as _,
@@ -292,7 +293,31 @@ def claim_post(self, comment_id, verify=True, first_claim=False):
 
 
 @app.task(bind=True, ignore_result=True, base=Task)
-def post_to_tor(self, sub, title, link, domain):
+def post_to_tor(self, sub, title, link, domain, post_id, media_link=None):
+    """
+    Posts a transcription to the /r/ToR front page
+
+    Params:
+        sub - Subreddit name that this comes from
+        title - The original title of the post from the other subreddit
+        link - The link to the original post from the other subreddit
+        domain - The domain of the original post's linked content
+        media_link - The link to the media in need of transcription
+    """
+    if not media_link:
+        log.warn(f'Attempting to post content with no media link. '
+                 f'({sub}: [{domain}] {repr(title)})')
+        return
+
+    # If youtube transcript is found, skip posting it to /r/ToR
+    if has_youtube_captions(media_link):
+        log.info(f'Found youtube captions for {media_link}... skipped.')
+        self.redis.sadd('complete_post_ids', post_id)
+        self.redis.incr('total_posted', amount=1)
+        self.redis.incr('total_new', amount=1)
+
+        return
+
     update_post_flair = signature('tor_worker.tasks.moderator.'
                                   'update_post_flair')
 
@@ -311,13 +336,11 @@ def post_to_tor(self, sub, title, link, domain):
     update_post_flair.delay(submission.id, 'Unclaimed')
 
     # Add completed post to tracker
-    self.redis.sadd('complete_post_ids', submission.id)
+    self.redis.sadd('complete_post_ids', post_id)
     self.redis.incr('total_posted', amount=1)
     self.redis.incr('total_new', amount=1)
 
     # TODO: OCR job for this comment
-    # TODO: YouTube transcription attempt
-
     reply = bot_msg['intro_comment'].format(
         post_type=post_type,
         formatting=post_template,

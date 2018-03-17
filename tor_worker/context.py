@@ -1,3 +1,4 @@
+import youtube
 from praw.models import Comment
 
 """
@@ -43,3 +44,19 @@ def is_transcription(comment: Comment):
         return True
 
     return False
+
+
+def has_youtube_captions(link):
+    if not link:
+        return False
+    if 'youtu' not in link:
+        return False
+
+    video = youtube.Video(link)
+
+    if not video.captions:
+        return False
+
+    # Any other criteria we want to filter on from the video metadata?
+
+    return True

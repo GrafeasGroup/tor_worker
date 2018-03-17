@@ -21,10 +21,10 @@ def send_to_slack(self, message, channel):
 
 @app.task(bind=True, rate_limit='20/m', ignore_result=True, base=Task)
 def monitor_own_new_feed(self):
-    # Using `signature` here so we don't have a recursive import loop
     update_post_flair = signature(
         'tor_worker.tasks.moderator.update_post_flair'
     )
+
     subreddit_name = 'TranscribersOfReddit'
     # config = Config.subreddit(subreddit_name)
 
@@ -43,10 +43,8 @@ def monitor_own_new_feed(self):
         if feed_item['data']['author'] not in OUR_BOTS and \
                 not feed_item['data']['link_flair_text']:
             # If any other user posts (besides our bots), apply a "META" flair
-            update_post_flair.apply_async(kwargs={
-                'submission_id': feed_item['data']['id'],
-                'flair': 'META',
-            })
+            update_post_flair.delay(submission_id=feed_item['data']['id'],
+                                    flair='META')
 
         # TODO: Any other maintenance tasks on our own posts?
 
@@ -106,14 +104,10 @@ def check_new_feed(self, subreddit):
             log.debug('Skips posts for a domain that isn\'t whitelisted')
             continue
 
-        post_to_tor.apply_async(
-            kwargs={
-                'sub': feed_item['data']['subreddit'],
-                'title': feed_item['data']['title'],
-                'link': feed_item['data']['permalink'],
-                'domain': feed_item['data']['domain'],
-            }
-        )
+        post_to_tor.delay(sub=feed_item['data']['subreddit'],
+                          title=feed_item['data']['title'],
+                          link=feed_item['data']['permalink'],
+                          domain=feed_item['data']['domain'])
         cross_posts += 1
 
     log.info(f'Found {cross_posts} posts for /r/{subreddit}')
@@ -121,6 +115,8 @@ def check_new_feed(self, subreddit):
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def accept_code_of_conduct(self, username):
+    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+
     self.redis.sadd('accepted_CoC', username)
 
     send_to_slack.delay(
@@ -132,6 +128,8 @@ def accept_code_of_conduct(self, username):
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def unhandled_comment(self, comment_id, body):
+    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+
     send_to_slack(
         f'**Unhandled comment reply** (https://redd.it/{comment_id})'
         f'\n\n'

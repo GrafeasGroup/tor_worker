@@ -13,14 +13,12 @@ from tor_worker.user_interaction import (
     post_comment,
 )
 from tor_worker.tasks.base import Task, InvalidUser
-from tor_worker.tasks.anyone import (
-    send_to_slack,
-    accept_code_of_conduct,
-    unhandled_comment,
-)
 
 from celery.utils.log import get_task_logger
-from celery import current_app as app
+from celery import (
+    current_app as app,
+    signature,
+)
 from praw.models import Comment
 
 import re
@@ -45,6 +43,8 @@ def check_inbox(self):
     queues. This effectively transfers tasks from Reddit's inbox to our internal
     task queuing system, reducing the required API calls.
     """
+    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+
     for item in reversed(list(self.reddit.inbox.unread(limit=None))):
 
         # NOTE: We compare the `kind` attribute due to testing issues with
@@ -176,6 +176,8 @@ def process_mod_intervention(comment: Comment):
     Triggers an alert in Slack with a link to the comment if there is something
     offensive or in need of moderator intervention
     """
+    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+
     phrases = []
     for regex in MOD_SUPPORT_PHRASES:
         matches = regex.search(comment.body)
@@ -209,6 +211,12 @@ def process_comment(self, comment_id):
     Processes a notification of comment being made, routing to other tasks as
     is deemed necessary
     """
+    accept_code_of_conduct = signature(
+        'tor_worker.tasks.anyone.accept_code_of_conduct'
+    )
+    unhandled_comment = signature('tor_worker.tasks.anyone.unhandled_comment')
+    claim_post = signature('tor_worker.tasks.moderator.claim_post')
+
     reply = self.reddit.comment(comment_id)
 
     if reply.author.name in OUR_BOTS:

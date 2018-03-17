@@ -35,11 +35,11 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.anyone.process_comment').delay \
+        signature('tor_worker.tasks.moderator.process_comment').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.process_comment',
+            'tor_worker.tasks.moderator.process_comment',
         )
 
         item.mark_read.assert_called_once()
@@ -57,11 +57,11 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.anyone.send_bot_message').delay \
+        signature('tor_worker.tasks.moderator.send_bot_message').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.send_bot_message',
+            'tor_worker.tasks.moderator.send_bot_message',
         )
 
         item.mark_read.assert_called_once()
@@ -121,10 +121,10 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.anyone.process_admin_command').delay \
+        signature('tor_worker.tasks.moderator.process_admin_command').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.process_admin_command',
+            'tor_worker.tasks.moderator.process_admin_command',
         )
         item.mark_read.assert_called_once()

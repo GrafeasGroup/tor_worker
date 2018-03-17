@@ -44,9 +44,9 @@ def check_inbox(self):
     task queuing system, reducing the required API calls.
     """
     send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
-    send_bot_message = signature('tor_worker.tasks.anyone.send_bot_message')
-    process_comment = signature('tor_worker.tasks.anyone.process_comment')
-    process_admin_command = signature('tor_worker.tasks.anyone.'
+    send_bot_message = signature('tor_worker.tasks.moderator.send_bot_message')
+    process_comment = signature('tor_worker.tasks.moderator.process_comment')
+    process_admin_command = signature('tor_worker.tasks.moderator.'
                                       'process_admin_command')
 
     for item in reversed(list(self.reddit.inbox.unread(limit=None))):

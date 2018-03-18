@@ -116,8 +116,8 @@ class PostConstraintSet(object):
         False
     """
 
-    def __init__(self, _settings={}):
-        self._settings = _settings
+    def __init__(self, _settings=None):
+        self._settings = _settings if _settings else {}
 
     def url_allowed(self, domain: str) -> bool:
         """
@@ -167,9 +167,9 @@ class CommandPermission(object):
         >>>
     """
 
-    def __init__(self, name, _value=False, _settings={}, _finished=False):
+    def __init__(self, name, _value=False, _settings=None, _finished=False):
         self.name = name.lower()
-        self._settings = _settings
+        self._settings = _settings if _settings else {}
         self._value = _value
         self._finished = _finished
 
@@ -247,8 +247,8 @@ class CommandSet(object):
 
 
 class GlobalSettings(object):
-    def __init__(self, _settings={}):
-        self._settings = _settings
+    def __init__(self, _settings=None):
+        self._settings = _settings if _settings else {}
 
     @cached_property
     def environment(self) -> str:

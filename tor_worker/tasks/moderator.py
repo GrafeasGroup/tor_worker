@@ -114,10 +114,36 @@ def check_inbox(self):
 @app.task(bind=True, ignore_result=True, base=Task)
 def process_admin_command(self, author, subject, body, message_id):
     """
-    WORK IN PROGRESS
+    This task is the basis for all other admin commands. It does not farm it out
+    to another task per command, rather it runs it in the existing task.
+
+    Steps:
+    - Check for permissions
+    - Retrieve associated function as a callable
+    - Call said function with the commands (author, body, svc)
+    - Send the response from the function as a reply back to the invoking
+      message.
     """
-    # TODO
-    raise NotImplementedError()
+    send_bot_message = signature('tor_worker.tasks.moderator.send_bot_message')
+
+    # It only makes sense to have this be scoped to /r/ToR
+    config = Config.subreddit('TranscribersOfReddit')
+    command_name = subject.lower()[1:]  # Lowercase and remove the initial '!'
+
+    if not config.commands.allows(command_name).by_user(author):
+        log.warning(f'DENIED: {author} is not allowed to call {command_name}')
+        # TODO: Send to slack
+        return
+
+    log.info(f'{author} called {command_name} with args {repr(body)}')
+
+    func = config.commands.func(command_name)
+    response = func(author=author, body=body, svc=self)
+
+    log.debug(f'Responding to {command_name} with {repr(body)} -> '
+              f'{repr(response)}.')
+
+    send_bot_message.delay(body=_(response), message_id=message_id)
 
 
 @app.task(bind=True, ignore_result=True, base=Task)

@@ -1,7 +1,7 @@
 import pytest  # noqa
 
 from tor_worker.tasks.moderator import send_bot_message
-from tor_worker.tasks.base import InvalidUser
+from tor_worker.tasks._base import InvalidUser
 
 from ..generators import (
     generate_redditor,

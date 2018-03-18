@@ -1,6 +1,6 @@
 from tor_worker import OUR_BOTS
 from tor_worker.config import Config
-from tor_worker.tasks.base import Task
+from tor_worker.tasks._base import Task
 
 from celery.utils.log import get_task_logger
 from celery import (

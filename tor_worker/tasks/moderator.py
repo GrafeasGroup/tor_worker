@@ -13,7 +13,7 @@ from tor_worker.user_interaction import (
     responses as bot_msg,
     post_comment,
 )
-from tor_worker.tasks.base import Task, InvalidUser
+from tor_worker.tasks._base import Task, InvalidUser
 
 from celery.utils.log import get_task_logger
 from celery import (

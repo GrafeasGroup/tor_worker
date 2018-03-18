@@ -76,7 +76,8 @@ class FeedCheckerTest(unittest.TestCase):
                                             link='https://www.4chan.com/b/'),
                     # Skip: already-processed post id
                     generate_post_feed_item(subreddit=subreddit,
-                                            id=pre_processed_id, link=img_link),
+                                            id_=pre_processed_id,
+                                            link=img_link),
                     # Good
                     generate_post_feed_item(subreddit=subreddit, link=img_link),
                 ]

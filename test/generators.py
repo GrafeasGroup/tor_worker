@@ -25,11 +25,11 @@ def generate_reddit_id():
 def generate_post_feed_item(link=None, subreddit='TranscribersOfReddit',
                             selftext='', author=_missing, flair=_missing,
                             locked=False, archived=False, score=1234,
-                            id=_missing):
-    if id is _missing:
+                            id_=_missing):
+    if id_ is _missing:
         ident = generate_reddit_id()
     else:
-        ident = id
+        ident = id_
     if flair is _missing:
         flair = 'Unclaimed'
     if not flair:
@@ -95,7 +95,7 @@ def generate_subreddit(name='subreddit', submission=None):
 
 
 def generate_submission(name='post', author=_missing, reply=None,
-                        flair=_missing, id=None):
+                        flair=_missing, id_=None):
     """
     Factory for creating a new Submission mock object.
     """
@@ -104,9 +104,9 @@ def generate_submission(name='post', author=_missing, reply=None,
     if author is _missing:
         author = generate_redditor().name
     sub.author = generate_redditor(username=author)
-    if not id:
-        id = generate_reddit_id()
-    sub.id = id
+    if not id_:
+        id_ = generate_reddit_id()
+    sub.id = id_
     sub.shortlink = f'http://redd.it/{sub.id}'
 
     if flair is _missing:

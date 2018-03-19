@@ -222,10 +222,10 @@ def process_mod_intervention(comment: Comment):
         return
 
     # Wrap each phrase in double-quotes (") and commas in between
-    phrases = '"' + '", "'.join(phrases) + '"'
+    phrase = '"' + '", "'.join(phrases) + '"'
 
     title = 'Mod Intervention Needed'
-    message = f'Detected use of {phrases} <{comment.submission.shortlink}>'
+    message = f'Detected use of {phrase} <{comment.submission.shortlink}>'
 
     send_to_slack.delay(
         f':rotating_light::rotating_light: {title} '

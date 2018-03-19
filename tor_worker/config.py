@@ -2,10 +2,12 @@ import json
 import importlib
 import os
 import random
-from typing import List, Dict, Callable, Any
-
+from typing import cast, List, Dict, Callable, Any
 
 from tor_worker import cached_property
+
+
+AdminCommandDef = Callable[[str, str, Any], str]
 
 
 class helpers:  # pragma: no cover
@@ -216,7 +218,7 @@ class CommandSet(object):
         return CommandPermission(name=command_name,
                                  _settings=self._commands.get(command_name, {}))
 
-    def func(self, command_name) -> Callable[[str, str, Any], str]:
+    def func(self, command_name) -> AdminCommandDef:
         """
         Returns a callable assigned to the given admin command. Callable takes 3
         arguments (author, arg, svc) and returns a message to be sent in reply.
@@ -232,7 +234,7 @@ class CommandSet(object):
         while len(segments) > 0:
             func = getattr(func, segments.pop(0))
 
-        return func
+        return cast(AdminCommandDef, func)
 
     @property
     def no(self) -> str:
@@ -284,7 +286,7 @@ class Config(DeserializerBase):
         'development'
     """
     # These should not change on a per-subreddit basis
-    _protected_attributes = []
+    _protected_attributes = []  # type: List[str]
 
     @classmethod
     def subreddit(cls, name: str) -> 'Config':

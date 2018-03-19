@@ -1,6 +1,7 @@
 *.pyc
 __pycache__
 /.cache
+/.mypy_cache
 /.coverage
 /*.egg-info
 /celery*

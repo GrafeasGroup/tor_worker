@@ -42,6 +42,7 @@ testing_deps = [
 ]
 dev_helper_deps = [
     'better-exceptions',
+    'mypy',
 ]
 
 setup(

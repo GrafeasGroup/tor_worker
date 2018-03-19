@@ -1,4 +1,3 @@
-import pytest  # noqa
 import os
 
 from tor_worker.tasks.anyone import send_to_slack

@@ -1,5 +1,3 @@
-import pytest  # noqa
-
 from tor_worker.tasks.moderator import check_inbox
 
 from ..celery import (

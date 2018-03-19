@@ -1,5 +1,3 @@
-import pytest  # noqa
-
 from tor_worker.config import Config
 
 import unittest

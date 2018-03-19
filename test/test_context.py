@@ -1,4 +1,4 @@
-import pytest  # noqa
+import pytest
 
 from .generators import (
     generate_comment,

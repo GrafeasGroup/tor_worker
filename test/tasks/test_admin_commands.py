@@ -1,4 +1,4 @@
-import pytest  # noqa
+import pytest
 
 from tor_worker.tasks.moderator import process_admin_command
 

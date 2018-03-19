@@ -1,5 +1,3 @@
-import pytest  # noqa
-
 from tor_worker.tasks.moderator import post_to_tor
 from tor_worker.user_interaction import (
     post_comment,

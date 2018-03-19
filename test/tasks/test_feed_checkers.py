@@ -1,5 +1,3 @@
-import pytest  # noqa
-
 from tor_worker.tasks.anyone import (
     check_new_feed,
     monitor_own_new_feed,

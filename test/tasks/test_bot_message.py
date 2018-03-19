@@ -1,4 +1,4 @@
-import pytest  # noqa
+import pytest
 
 from tor_worker.tasks.moderator import send_bot_message
 from tor_worker.tasks._base import InvalidUser

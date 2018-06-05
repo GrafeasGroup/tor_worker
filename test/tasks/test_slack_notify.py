@@ -1,6 +1,6 @@
 import os
 
-from tor_worker.tasks.anyone import send_to_slack
+from tor_worker.role_anyone.tasks import send_to_slack
 
 from slackclient import SlackClient
 
@@ -13,8 +13,8 @@ class SendToSlackTest(unittest.TestCase):
     def setUp(self):
         os.environ['SLACK_API_KEY'] = 'notavalidkey'
 
-    @patch('tor_worker.tasks._base.SlackClient', spec=SlackClient)
-    @patch('tor_worker.tasks.anyone.send_to_slack.slack', spec=SlackClient)
+    @patch('tor_worker.task_base.SlackClient', spec=SlackClient)
+    @patch('tor_worker.role_anyone.tasks.send_to_slack.slack', spec=SlackClient)
     def test_send_to_slack(self, mock_client, mock_slack):
         send_to_slack('foo', 'bar')
 

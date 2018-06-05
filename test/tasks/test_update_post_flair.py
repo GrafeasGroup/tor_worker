@@ -1,6 +1,6 @@
 import pytest
 
-from tor_worker.tasks.moderator import update_post_flair
+from tor_worker.role_moderator.tasks import update_post_flair
 
 from ..generators import (
     generate_submission
@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 
 class UpdatePostFlairTest(unittest.TestCase):
 
-    @patch('tor_worker.tasks.moderator.update_post_flair.reddit')
+    @patch('tor_worker.role_moderator.tasks.update_post_flair.reddit')
     def test_available_flair(self, mock_reddit):
         post = generate_submission()
         mock_reddit.submission = MagicMock(return_value=post)
@@ -23,7 +23,7 @@ class UpdatePostFlairTest(unittest.TestCase):
         post.flair.choices.assert_called_once_with()
         post.flair.select.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.update_post_flair.reddit')
+    @patch('tor_worker.role_moderator.tasks.update_post_flair.reddit')
     def test_unavailable_flair(self, mock_reddit):
         post = generate_submission()
         mock_reddit.submission = MagicMock(return_value=post)

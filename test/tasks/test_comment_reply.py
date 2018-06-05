@@ -1,4 +1,4 @@
-from tor_worker.tasks.moderator import (
+from tor_worker.role_moderator.tasks import (
     process_comment,
     process_mod_intervention,
 )
@@ -37,9 +37,9 @@ class ProcessConductCommentTest(unittest.TestCase):
 
         self.comment = target
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_import_tasks(self, mod_intervention, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
@@ -49,14 +49,14 @@ class ProcessConductCommentTest(unittest.TestCase):
 
         for mod_task in ['claim_post']:
             mock_signature.assert_any_call(
-                f'tor_worker.tasks.moderator.{mod_task}')
+                f'tor_worker.role_moderator.tasks.{mod_task}')
         for anon_task in ['accept_code_of_conduct', 'unhandled_comment']:
             mock_signature.assert_any_call(
-                f'tor_worker.tasks.anyone.{anon_task}')
+                f'tor_worker.role_anyone.tasks.{anon_task}')
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_agree(self, mod_intervention, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
@@ -67,21 +67,21 @@ class ProcessConductCommentTest(unittest.TestCase):
 
         mock_reddit.comment.assert_called_with(self.comment.id)
 
-        signature('tor_worker.tasks.anyone.accept_code_of_conduct').delay \
+        signature('tor_worker.role_anyone.tasks.accept_code_of_conduct').delay \
             .assert_called_once_with(self.comment.author.name)
-        signature('tor_worker.tasks.moderator.claim_post').delay \
+        signature('tor_worker.role_moderator.tasks.claim_post').delay \
             .assert_called_once_with(self.comment.id, verify=False,
                                      first_claim=True)
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.accept_code_of_conduct',
-            'tor_worker.tasks.moderator.claim_post',
+            'tor_worker.role_anyone.tasks.accept_code_of_conduct',
+            'tor_worker.role_moderator.tasks.claim_post',
         )
         mod_intervention.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_disagree(self, mod_intervention, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
@@ -90,11 +90,11 @@ class ProcessConductCommentTest(unittest.TestCase):
         self.comment.body = 'Nah, go screw yourself.'
         process_comment(self.comment.id)
 
-        signature('tor_worker.tasks.anyone.unhandled_comment').delay \
+        signature('tor_worker.role_anyone.tasks.unhandled_comment').delay \
             .assert_called_once_with(comment_id=self.comment.id,
                                      body=self.comment.body)
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.unhandled_comment'
+            'tor_worker.role_anyone.tasks.unhandled_comment'
         )
         mock_reddit.comment.assert_called_with(self.comment.id)
         mod_intervention.assert_called_once()
@@ -117,9 +117,9 @@ class ProcessClaimableCommentTest(unittest.TestCase):
 
         self.comment = target
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_import_tasks(self, mod_intervention, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
@@ -129,14 +129,14 @@ class ProcessClaimableCommentTest(unittest.TestCase):
 
         for mod_task in ['claim_post']:
             mock_signature.assert_any_call(
-                f'tor_worker.tasks.moderator.{mod_task}')
+                f'tor_worker.role_moderator.tasks.{mod_task}')
         for anon_task in ['accept_code_of_conduct', 'unhandled_comment']:
             mock_signature.assert_any_call(
-                f'tor_worker.tasks.anyone.{anon_task}')
+                f'tor_worker.role_anyone.tasks.{anon_task}')
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_other_bot_commented(self, mod_intervention, mock_reddit,
                                  mock_signature):
@@ -150,9 +150,9 @@ class ProcessClaimableCommentTest(unittest.TestCase):
         mock_reddit.comment.assert_called_with(self.comment.id)
         mod_intervention.assert_not_called()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_claim(self, mod_intervention, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
@@ -161,18 +161,18 @@ class ProcessClaimableCommentTest(unittest.TestCase):
         self.comment.body = 'I claim this land in the name of France!'
         process_comment(self.comment.id)
 
-        signature('tor_worker.tasks.moderator.claim_post').delay \
+        signature('tor_worker.role_moderator.tasks.claim_post').delay \
             .assert_called_once_with(self.comment.id)
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.claim_post',
+            'tor_worker.role_moderator.tasks.claim_post',
         )
         mock_reddit.comment.assert_called_with(self.comment.id)
         mod_intervention.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
-    @patch('tor_worker.tasks.moderator.process_mod_intervention',
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_mod_intervention',
            side_effect=None)
     def test_refuse(self, mod_intervention, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
@@ -181,25 +181,25 @@ class ProcessClaimableCommentTest(unittest.TestCase):
         self.comment.body = 'Nah, screw it. I can do it later'
         process_comment(self.comment.id)
 
-        signature('tor_worker.tasks.anyone.unhandled_comment').delay \
+        signature('tor_worker.role_anyone.tasks.unhandled_comment').delay \
             .assert_called_once()
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.unhandled_comment',
+            'tor_worker.role_anyone.tasks.unhandled_comment',
         )
         mock_reddit.comment.assert_called_with(self.comment.id)
         mod_intervention.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
     def test_mod_intervention(self, mock_signature):
         self.comment.body = 'Nah, fuck it. I can do it later'
 
         process_mod_intervention(self.comment)
 
-        signature('tor_worker.tasks.anyone.send_to_slack').delay \
+        signature('tor_worker.role_anyone.tasks.send_to_slack').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.send_to_slack',
+            'tor_worker.role_anyone.tasks.send_to_slack',
         )
 
 
@@ -222,8 +222,8 @@ class ProcessDoneCommentTest(unittest.TestCase):
 
         self.comment = target
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
     def test_misspelled_done(self, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
@@ -234,7 +234,7 @@ class ProcessDoneCommentTest(unittest.TestCase):
 
         mock_reddit.comment.assert_any_call(self.comment.id)
 
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
     def test_done(self, mock_reddit):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
@@ -244,7 +244,7 @@ class ProcessDoneCommentTest(unittest.TestCase):
 
         mock_reddit.comment.assert_any_call(self.comment.id)
 
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
     def test_override_as_admin(self, mock_reddit):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
@@ -257,7 +257,7 @@ class ProcessDoneCommentTest(unittest.TestCase):
 
         mock_reddit.comment.assert_any_call(self.comment.id)
 
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
     def test_override_as_anon(self, mock_reddit):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
@@ -269,8 +269,8 @@ class ProcessDoneCommentTest(unittest.TestCase):
 
         mock_reddit.comment.assert_any_call(self.comment.id)
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.process_comment.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.process_comment.reddit')
     def test_weird_response(self, mock_reddit, mock_signature):
         mock_reddit.comment = MagicMock(name='comment',
                                         return_value=self.comment)
@@ -279,10 +279,10 @@ class ProcessDoneCommentTest(unittest.TestCase):
         process_comment(self.comment.id)
         # TODO: more to come when actual functionality is built-out
 
-        signature('tor_worker.tasks.anyone.unhandled_comment').delay \
+        signature('tor_worker.role_anyone.tasks.unhandled_comment').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.unhandled_comment',
+            'tor_worker.role_anyone.tasks.unhandled_comment',
         )
         mock_reddit.comment.assert_any_call(self.comment.id)

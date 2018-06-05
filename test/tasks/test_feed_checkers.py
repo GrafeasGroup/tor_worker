@@ -1,4 +1,4 @@
-from tor_worker.tasks.anyone import (
+from tor_worker.role_anyone.tasks import (
     check_new_feed,
     monitor_own_new_feed,
 )
@@ -34,10 +34,10 @@ class FeedCheckerTest(unittest.TestCase):
     def submission(self, *args, **kwargs):
         return generate_post_feed_item(*args, **kwargs)
 
-    @patch('tor_worker.tasks.anyone.Config')
-    @patch('tor_worker.tasks.anyone.signature', side_effect=signature)
-    @patch('tor_worker.tasks.anyone.check_new_feed.http.get')
-    @patch('tor_worker.tasks.anyone.check_new_feed.redis', side_effect=None)
+    @patch('tor_worker.role_anyone.tasks.Config')
+    @patch('tor_worker.role_anyone.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_anyone.tasks.check_new_feed.http.get')
+    @patch('tor_worker.role_anyone.tasks.check_new_feed.redis', side_effect=None)
     def test_feed_reader(self, mock_redis, mock_http_get, mock_signature,
                          mock_config):
         mock_config.subreddit = MagicMock(name='Config.subreddit',
@@ -98,15 +98,15 @@ class FeedCheckerTest(unittest.TestCase):
 
         check_new_feed(subreddit)
 
-        signature('tor_worker.tasks.moderator.post_to_tor').delay \
+        signature('tor_worker.role_moderator.tasks.post_to_tor').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.post_to_tor',
+            'tor_worker.role_moderator.tasks.post_to_tor',
         )
 
-    @patch('tor_worker.tasks.anyone.signature', side_effect=signature)
-    @patch('tor_worker.tasks.anyone.monitor_own_new_feed.http.get')
+    @patch('tor_worker.role_anyone.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_anyone.tasks.monitor_own_new_feed.http.get')
     def test_self_monitoring_feed(self, mock_http_get, mock_signature):
         mock_response = MagicMock(name='http_response')
         mock_http_get.return_value = mock_response
@@ -134,9 +134,9 @@ class FeedCheckerTest(unittest.TestCase):
 
         monitor_own_new_feed()
 
-        assert signature('tor_worker.tasks.moderator.update_post_flair').delay \
-            .call_count == 2
+        assert signature('tor_worker.role_moderator.tasks.update_post_flair') \
+            .delay.call_count == 2
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.update_post_flair',
+            'tor_worker.role_moderator.tasks.update_post_flair',
         )

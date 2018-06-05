@@ -13,7 +13,7 @@ from tor_worker.user_interaction import (
     responses as bot_msg,
     post_comment,
 )
-from tor_worker.tasks._base import Task, InvalidUser
+from tor_worker.task_base import Task, InvalidUser
 
 from celery.utils.log import get_task_logger
 from celery import (
@@ -44,10 +44,12 @@ def check_inbox(self):
     queues. This effectively transfers tasks from Reddit's inbox to our internal
     task queuing system, reducing the required API calls.
     """
-    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
-    send_bot_message = signature('tor_worker.tasks.moderator.send_bot_message')
-    process_comment = signature('tor_worker.tasks.moderator.process_comment')
-    process_admin_command = signature('tor_worker.tasks.moderator.'
+    send_to_slack = signature('tor_worker.role_anyone.tasks.send_to_slack')
+    send_bot_message = signature('tor_worker.role_moderator.tasks.'
+                                 'send_bot_message')
+    process_comment = signature('tor_worker.role_moderator.tasks.'
+                                'process_comment')
+    process_admin_command = signature('tor_worker.role_moderator.tasks.'
                                       'process_admin_command')
 
     for item in reversed(list(self.reddit.inbox.unread(limit=None))):
@@ -124,7 +126,8 @@ def process_admin_command(self, author, subject, body, message_id):
     - Send the response from the function as a reply back to the invoking
       message.
     """
-    send_bot_message = signature('tor_worker.tasks.moderator.send_bot_message')
+    send_bot_message = signature('tor_worker.role_moderator.tasks.'
+                                 'send_bot_message')
 
     # It only makes sense to have this be scoped to /r/ToR
     config = Config.subreddit('TranscribersOfReddit')
@@ -207,7 +210,7 @@ def process_mod_intervention(comment: Comment):
     Triggers an alert in Slack with a link to the comment if there is something
     offensive or in need of moderator intervention
     """
-    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+    send_to_slack = signature('tor_worker.role_anyone.tasks.send_to_slack')
 
     phrases = []
     for regex in MOD_SUPPORT_PHRASES:
@@ -241,10 +244,11 @@ def process_comment(self, comment_id):
     Processes a notification of comment being made, routing to other tasks as
     is deemed necessary
     """
-    accept_code_of_conduct = signature('tor_worker.tasks.anyone.'
+    accept_code_of_conduct = signature('tor_worker.role_anyone.tasks.'
                                        'accept_code_of_conduct')
-    unhandled_comment = signature('tor_worker.tasks.anyone.unhandled_comment')
-    claim_post = signature('tor_worker.tasks.moderator.claim_post')
+    unhandled_comment = signature('tor_worker.role_anyone.tasks.'
+                                  'unhandled_comment')
+    claim_post = signature('tor_worker.role_moderator.tasks.claim_post')
 
     reply = self.reddit.comment(comment_id)
 
@@ -297,7 +301,7 @@ def claim_post(self, comment_id, verify=True, first_claim=False):
       - Update flair: ``Unclaimed`` -> ``In Progress``
       - Post response: ``Hey, you have the post!``
     """
-    update_post_flair = signature('tor_worker.tasks.moderator.'
+    update_post_flair = signature('tor_worker.role_moderator.tasks.'
                                   'update_post_flair')
 
     comment = self.reddit.comment(comment_id)
@@ -344,7 +348,7 @@ def post_to_tor(self, sub, title, link, domain, post_id, media_link=None):
 
         return
 
-    update_post_flair = signature('tor_worker.tasks.moderator.'
+    update_post_flair = signature('tor_worker.role_moderator.tasks.'
                                   'update_post_flair')
 
     config = Config.subreddit(sub)

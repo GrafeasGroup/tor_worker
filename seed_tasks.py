@@ -12,8 +12,8 @@ from redis import StrictRedis as RedisClient
 redis = RedisClient(host='localhost', port=6379, db=1)
 
 # Here are the tasks imported using an agnostic way of queuing them
-test_system = signature('tor_worker.tasks.anyone.test_system')  # noqa
-send_bot_message = signature('tor_worker.tasks.moderator.send_bot_message')  # noqa
+test_system = signature('tor_worker.role_anyone.tasks.test_system')  # noqa
+send_bot_message = signature('tor_worker.role_moderator.tasks.send_bot_message')  # noqa
 fake_task = signature('tor_worker.foo')  # noqa
 
 print('Pre-seed time:  %d' % time.time())

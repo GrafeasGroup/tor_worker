@@ -1,4 +1,4 @@
-from tor_worker.tasks.moderator import post_to_tor
+from tor_worker.role_moderator.tasks import post_to_tor
 from tor_worker.user_interaction import (
     post_comment,
     format_bot_response as _,
@@ -27,13 +27,13 @@ class PostToTorTaskTest(unittest.TestCase):
     def setUp(self):
         reset_signatures()
 
-    @patch('tor_worker.tasks.moderator.has_youtube_captions',
+    @patch('tor_worker.role_moderator.tasks.has_youtube_captions',
            return_value=True)
-    @patch('tor_worker.tasks.moderator.post_comment')
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.Config')
-    @patch('tor_worker.tasks.moderator.post_to_tor.reddit')
-    @patch('tor_worker.tasks.moderator.post_to_tor.redis')
+    @patch('tor_worker.role_moderator.tasks.post_comment')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.Config')
+    @patch('tor_worker.role_moderator.tasks.post_to_tor.reddit')
+    @patch('tor_worker.role_moderator.tasks.post_to_tor.redis')
     def test_youtube_with_captions_post(self, mock_redis, mock_reddit,
                                         mock_config, mock_signature,
                                         mock_post_comment, mock_captions):
@@ -64,13 +64,13 @@ class PostToTorTaskTest(unittest.TestCase):
         mock_post_comment.assert_not_called()
         assert_no_tasks_called()
 
-    @patch('tor_worker.tasks.moderator.has_youtube_captions',
+    @patch('tor_worker.role_moderator.tasks.has_youtube_captions',
            return_value=False)
-    @patch('tor_worker.tasks.moderator.post_comment')
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.Config')
-    @patch('tor_worker.tasks.moderator.post_to_tor.reddit')
-    @patch('tor_worker.tasks.moderator.post_to_tor.redis')
+    @patch('tor_worker.role_moderator.tasks.post_comment')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.Config')
+    @patch('tor_worker.role_moderator.tasks.post_to_tor.reddit')
+    @patch('tor_worker.role_moderator.tasks.post_to_tor.redis')
     def test_new_post(self, mock_redis, mock_reddit, mock_config,
                       mock_signature, mock_post_comment, mock_captions):
         comment = generate_comment()
@@ -98,11 +98,11 @@ class PostToTorTaskTest(unittest.TestCase):
 
         sub.submit.assert_called_once()
         mock_post_comment.assert_called_once()
-        signature('tor_worker.tasks.moderator.update_post_flair').delay \
+        signature('tor_worker.role_moderator.tasks.update_post_flair').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.update_post_flair',
+            'tor_worker.role_moderator.tasks.update_post_flair',
         )
 
         assert f'subreddit | Other | "title goes here"' == post.title

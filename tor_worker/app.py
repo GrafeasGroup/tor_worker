@@ -13,11 +13,11 @@ app.conf.task_default_queue = 'default'
 
 app.conf.beat_schedule = {
     # 'check_inbox': {
-    #     'task': 'tor_worker.tasks.moderator.check_inbox',
+    #     'task': 'tor_worker.role_moderator.tasks.check_inbox',
     #     'schedule': 90,  # seconds
     # },
     # 'check-subreddit-feeds': {
-    #     'task': 'tor_worker.tasks.anyone.check_new_feeds',
+    #     'task': 'tor_worker.role_anyone.tasks.check_new_feeds',
     #     'schedule': 30,  # seconds
     # },
 }
@@ -54,16 +54,16 @@ or concurrency issues to work around), we put it in the 'default' queue. All
 tasks not explicitly declared below are put in that queue.
 """
 app.conf.task_routes = ([
-    ('tor_worker.tasks.moderator.check_inbox', {
+    ('tor_worker.role_moderator.tasks.check_inbox', {
         'queue': 'u_transcribersofreddit'
     }),
-    ('tor_worker.tasks.moderator.process_message', {
+    ('tor_worker.role_moderator.tasks.process_message', {
         'queue': 'u_transcribersofreddit'
     }),
-    ('tor_worker.tasks.moderator.send_bot_message', {
+    ('tor_worker.role_moderator.tasks.send_bot_message', {
         'queue': 'u_transcribersofreddit'
     }),
-    ('tor_worker.tasks.moderator.*', {
+    ('tor_worker.role_moderator.tasks.*', {
         'queue': 'f_tor_mod'
     }),
 ],)
@@ -92,5 +92,6 @@ def setup_logging(logger, *args, **kwargs):
 
 # All of the below imports are 'useless', per static analysis, but required for
 # celery to register all of the tasks in the system
-import tor_worker.tasks.moderator  # noqa
-import tor_worker.tasks.anyone  # noqa
+app.autodiscover_tasks(packages=[
+    'tor_worker',
+], force=True)

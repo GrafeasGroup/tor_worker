@@ -1,7 +1,7 @@
 import pytest
 
-from tor_worker.tasks.moderator import send_bot_message
-from tor_worker.tasks._base import InvalidUser
+from tor_worker.role_moderator.tasks import send_bot_message
+from tor_worker.task_base import InvalidUser
 
 from ..generators import (
     generate_redditor,
@@ -19,7 +19,7 @@ class SendBotMessageTest(unittest.TestCase):
     Tests for the ``send_bot_message`` task
     """
 
-    @patch('tor_worker.tasks.moderator.send_bot_message.reddit')
+    @patch('tor_worker.role_moderator.tasks.send_bot_message.reddit')
     def test_reply_message(self, mock_reddit):
         user = generate_redditor(username='transcribersofreddit')
         msg = generate_message()
@@ -36,7 +36,7 @@ class SendBotMessageTest(unittest.TestCase):
         mock_reddit.message.assert_any_call(msg.id)
         msg.reply.assert_called_once_with("It's time we met face-to-face")
 
-    @patch('tor_worker.tasks.moderator.send_bot_message.reddit')
+    @patch('tor_worker.role_moderator.tasks.send_bot_message.reddit')
     def test_redditor_recipient(self, mock_reddit):
         user = generate_redditor(username='transcribersofreddit')
         msg = generate_message()
@@ -64,7 +64,7 @@ class SendBotMessageTest(unittest.TestCase):
             "It's time we met face-to-face"
         )
 
-    @patch('tor_worker.tasks.moderator.send_bot_message.reddit')
+    @patch('tor_worker.role_moderator.tasks.send_bot_message.reddit')
     def test_no_input(self, mock_reddit):
         user = generate_redditor(username='transcribersofreddit')
 
@@ -76,7 +76,7 @@ class SendBotMessageTest(unittest.TestCase):
 
         mock_reddit.user.me.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.send_bot_message.reddit')
+    @patch('tor_worker.role_moderator.tasks.send_bot_message.reddit')
     def test_bad_task_runner(self, mock_reddit):
         user = generate_redditor(username='someotheruser')
 

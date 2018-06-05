@@ -1,4 +1,4 @@
-from tor_worker.tasks.moderator import check_inbox
+from tor_worker.role_moderator.tasks import check_inbox
 
 from ..celery import (
     signature,
@@ -24,8 +24,8 @@ class ProcessInboxMessagesTest(unittest.TestCase):
     def setUp(self):
         reset_signatures()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.check_inbox.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.check_inbox.reddit')
     def test_comment(self, mock_reddit, mock_signature):
         item = generate_comment()
         mock_reddit.inbox = generate_inbox()
@@ -33,17 +33,17 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.moderator.process_comment').delay \
+        signature('tor_worker.role_moderator.tasks.process_comment').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.process_comment',
+            'tor_worker.role_moderator.tasks.process_comment',
         )
 
         item.mark_read.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.check_inbox.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.check_inbox.reddit')
     def test_mention(self, mock_reddit, mock_signature):
         item = generate_comment(
             subject='username mention',
@@ -55,17 +55,17 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.moderator.send_bot_message').delay \
+        signature('tor_worker.role_moderator.tasks.send_bot_message').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.send_bot_message',
+            'tor_worker.role_moderator.tasks.send_bot_message',
         )
 
         item.mark_read.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.check_inbox.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.check_inbox.reddit')
     def test_message(self, mock_reddit, mock_signature):
         item = generate_message(
             subject='Yo! I like this subreddit',
@@ -77,16 +77,16 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.anyone.send_to_slack').delay \
+        signature('tor_worker.role_anyone.tasks.send_to_slack').delay \
             .assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.send_to_slack',
+            'tor_worker.role_anyone.tasks.send_to_slack',
         )
         item.mark_read.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.check_inbox.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.check_inbox.reddit')
     def test_mod_message(self, mock_reddit, mock_signature):
         item = generate_message(
             author=None,
@@ -99,16 +99,16 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.anyone.send_to_slack').delay \
+        signature('tor_worker.role_anyone.tasks.send_to_slack').delay \
             .assert_called_once_with(ANY, '#general')
 
         assert_only_tasks_called(
-            'tor_worker.tasks.anyone.send_to_slack',
+            'tor_worker.role_anyone.tasks.send_to_slack',
         )
         item.mark_read.assert_called_once()
 
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
-    @patch('tor_worker.tasks.moderator.check_inbox.reddit')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.check_inbox.reddit')
     def test_admin_command(self, mock_reddit, mock_signature):
         item = generate_message(
             subject='!ignoreplebians'
@@ -119,10 +119,10 @@ class ProcessInboxMessagesTest(unittest.TestCase):
 
         check_inbox()
 
-        signature('tor_worker.tasks.moderator.process_admin_command').delay \
-            .assert_called_once()
+        signature('tor_worker.role_moderator.tasks.process_admin_command') \
+            .delay.assert_called_once()
 
         assert_only_tasks_called(
-            'tor_worker.tasks.moderator.process_admin_command',
+            'tor_worker.role_moderator.tasks.process_admin_command',
         )
         item.mark_read.assert_called_once()

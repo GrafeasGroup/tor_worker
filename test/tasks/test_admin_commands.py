@@ -1,6 +1,6 @@
 import pytest
 
-from tor_worker.tasks.moderator import process_admin_command
+from tor_worker.role_moderator.tasks import process_admin_command
 
 from ..celery import (
     signature,
@@ -22,15 +22,15 @@ class ProcessAdminCommandTest(unittest.TestCase):
         reset_signatures()
         self.msg = generate_message()
 
-    # @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
+    # @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
     # def test_import_tasks(self, mock_signature):
     #     process_admin_command(subject='!ping',
     #                           author='me',
     #                           body='derp',
     #                           message_id=self.msg.id)
 
-    @patch('tor_worker.tasks.moderator.Config')
-    @patch('tor_worker.tasks.moderator.signature', side_effect=signature)
+    @patch('tor_worker.role_moderator.tasks.Config')
+    @patch('tor_worker.role_moderator.tasks.signature', side_effect=signature)
     def test_routing_blacklist(self, mock_signature, mock_config):
         mock_config.subreddit = MagicMock(name='Config.subreddit',
                                           return_value=mock_config)

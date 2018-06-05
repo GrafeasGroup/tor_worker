@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List
 
 class Task: ...
 
@@ -7,10 +7,11 @@ class Celery(object):
 
   def __init__(self, *args, **kwargs): ...
 
-class App:
-  task = None  # type: Any
+  def autodiscover_tasks(self, packages : List[str] = None, related_name : str = 'tasks', force : bool = False) -> Any: ...
+
+  def task(self, *args, **opts): ...
 
 def signature(*args, **kwargs) -> Any: ...
 
-current_app = App()
+current_app = Celery()
 signals = None  # type: Any

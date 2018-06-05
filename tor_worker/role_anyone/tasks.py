@@ -1,6 +1,6 @@
 from tor_worker import OUR_BOTS
 from tor_worker.config import Config
-from tor_worker.tasks._base import Task
+from tor_worker.task_base import Task
 
 from celery.utils.log import get_task_logger
 from celery import (
@@ -22,7 +22,7 @@ def send_to_slack(self, message, channel):
 @app.task(bind=True, rate_limit='20/m', ignore_result=True, base=Task)
 def monitor_own_new_feed(self):
     update_post_flair = signature(
-        'tor_worker.tasks.moderator.update_post_flair'
+        'tor_worker.role_moderator.tasks.update_post_flair'
     )
 
     subreddit_name = 'TranscribersOfReddit'
@@ -60,7 +60,7 @@ def check_new_feeds(self):  # pragma: no coverage
 @app.task(bind=True, rate_limit='50/m', ignore_result=True, base=Task)
 def check_new_feed(self, subreddit):
     # Using `signature` here so we don't have a recursive import loop
-    post_to_tor = signature('tor_worker.tasks.moderator.post_to_tor')
+    post_to_tor = signature('tor_worker.role_moderator.tasks.post_to_tor')
 
     config = Config.subreddit(subreddit)
 
@@ -117,7 +117,7 @@ def check_new_feed(self, subreddit):
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def accept_code_of_conduct(self, username):
-    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+    send_to_slack = signature('tor_worker.role_anyone.tasks.send_to_slack')
 
     self.redis.sadd('accepted_CoC', username)
 
@@ -130,7 +130,7 @@ def accept_code_of_conduct(self, username):
 
 @app.task(bind=True, ignore_result=True, base=Task)
 def unhandled_comment(self, comment_id, body):
-    send_to_slack = signature('tor_worker.tasks.anyone.send_to_slack')
+    send_to_slack = signature('tor_worker.role_anyone.tasks.send_to_slack')
 
     send_to_slack(
         f'**Unhandled comment reply** (https://redd.it/{comment_id})'

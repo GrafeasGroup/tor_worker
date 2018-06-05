@@ -3,7 +3,7 @@
 import time
 
 # We need this for routing:
-from tor_worker.app import app  # noqa
+from celeryconfig import app  # noqa
 
 from celery import signature
 from redis import StrictRedis as RedisClient

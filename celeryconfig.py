@@ -1,27 +1,3 @@
-import logging
-import os
-
-from tor_worker import __BROKER_URL__, __version__
-
-from celery import Celery, signals
-
-
-app = Celery('tor_worker', broker=__BROKER_URL__)
-app.conf.timezone = 'UTC'
-app.conf.enable_utc = True
-app.conf.task_default_queue = 'default'
-
-app.conf.beat_schedule = {
-    # 'check_inbox': {
-    #     'task': 'tor_worker.role_moderator.tasks.check_inbox',
-    #     'schedule': 90,  # seconds
-    # },
-    # 'check-subreddit-feeds': {
-    #     'task': 'tor_worker.role_anyone.tasks.check_new_feeds',
-    #     'schedule': 30,  # seconds
-    # },
-}
-
 """
 # Queue Naming
 
@@ -53,20 +29,15 @@ If something does not have any particular requirements (e.g., no rate-limiting
 or concurrency issues to work around), we put it in the 'default' queue. All
 tasks not explicitly declared below are put in that queue.
 """
-app.conf.task_routes = ([
-    ('tor_worker.role_moderator.tasks.check_inbox', {
-        'queue': 'u_transcribersofreddit'
-    }),
-    ('tor_worker.role_moderator.tasks.process_message', {
-        'queue': 'u_transcribersofreddit'
-    }),
-    ('tor_worker.role_moderator.tasks.send_bot_message', {
-        'queue': 'u_transcribersofreddit'
-    }),
-    ('tor_worker.role_moderator.tasks.*', {
-        'queue': 'f_tor_mod'
-    }),
-],)
+
+import logging
+import os
+
+from tor_worker import __BROKER_URL__, __version__
+
+from tor_worker.celeryconfig import Config
+
+from celery import Celery, signals
 
 
 @signals.after_setup_task_logger.connect
@@ -90,8 +61,11 @@ def setup_logging(logger, *args, **kwargs):
                        'Bugsnag setup was skipped.')
 
 
-# All of the below imports are 'useless', per static analysis, but required for
-# celery to register all of the tasks in the system
-app.autodiscover_tasks(packages=[
+cfg = Config()
+cfg.beat_schedule = {}
+
+app = Celery('tor_worker', broker=__BROKER_URL__)
+app.config_from_object(cfg)
+app.autodiscover_tasks(force=True, packages=[
     'tor_worker',
-], force=True)
+])

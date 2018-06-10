@@ -38,7 +38,6 @@ testing_deps = [
     'sh',
     'pytest',
     'pytest-cov',
-    'loremipsum',
 ]
 dev_helper_deps = [
     'better-exceptions',
@@ -80,15 +79,8 @@ setup(
     },
     tests_require=testing_deps,
     install_requires=[
-        'requests',
-        'praw==5.0.1',
-        'youtube==0.0.1',
-        'slackclient',
         'redis<3.0.0',
         'celery[redis]',
         'bugsnag',
     ],
-    dependency_links=[
-        'https://github.com/itsthejoker/youtube/archive/master.tar.gz#egg=youtube-0.0.1', # noqa
-    ]
 )

@@ -33,7 +33,8 @@ tasks not explicitly declared below are put in that queue.
 import logging
 import os
 
-from tor_worker import __BROKER_URL__, __version__
+from tor_worker import __version__
+from tor_core import __BROKER_URL__
 
 from tor_worker.celeryconfig import Config
 
@@ -63,9 +64,10 @@ def setup_logging(logger, *args, **kwargs):
 
 cfg = Config()
 cfg.beat_schedule = {}
-
-app = Celery('tor_worker', broker=__BROKER_URL__)
+app = Celery('tor', broker=__BROKER_URL__)
 app.config_from_object(cfg)
-app.autodiscover_tasks(force=True, packages=[
-    'tor_worker',
-])
+
+# task_packages = ','.split(os.getenv('TOR_BOT_PACKAGES',
+#                                     'tor,tor_archivist,tor_ocr'))
+# task_packages = [name.strip() for name in task_packages if name.strip()]
+# app.autodiscover_tasks(force=True, packages=task_packages)

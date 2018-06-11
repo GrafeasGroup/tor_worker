@@ -71,7 +71,7 @@ setup(
     test_suite='test',
     entry_points={
         'console_scripts': [
-            # 'tor-worker = tor_worker.cli.__main__:main',
+            'tor-inspect = tor_worker.cli.inspect:main',
         ],
     },
     extras_require={
@@ -79,8 +79,12 @@ setup(
     },
     tests_require=testing_deps,
     install_requires=[
+        'tor_core==1.0.0',
         'redis<3.0.0',
         'celery[redis]',
         'bugsnag',
+    ],
+    dependency_links=[
+        'https://github.com/GrafeasGroup/tor_core/archive/celery-rewrite.tar.gz#egg=tor_core-1.0.0',  # noqa
     ],
 )

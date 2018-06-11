@@ -79,12 +79,14 @@ setup(
     },
     tests_require=testing_deps,
     install_requires=[
-        'tor_core==1.0.0',
+        'tor==4.0.0',
+        'tor_core',
         'redis<3.0.0',
         'celery[redis]',
         'bugsnag',
     ],
     dependency_links=[
-        'https://github.com/GrafeasGroup/tor_core/archive/celery-rewrite.tar.gz#egg=tor_core-1.0.0',  # noqa
+        'https://github.com/GrafeasGroup/tor/archive/celery-rewrite.tar.gz#egg=tor-4.0.0',  # noqa
+        'https://github.com/GrafeasGroup/tor_core/archive/celery-rewrite.tar.gz#egg=tor_core',  # noqa
     ],
 )
